@@ -1,0 +1,2215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>VoiceScore Practice Pro</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.10.9/dist/soundfont-player.min.js"></script>
+    
+    <style>
+        :root { --primary: #2563eb; --bg: #0f172a; --surface: #1e293b; --text: #f8fafc; }
+        body, html { background-color: var(--bg); color: var(--text); overflow: hidden; height: 100dvh; width: 100%; font-family: sans-serif; margin: 0; padding: 0; touch-action: pan-y; overscroll-behavior: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        #root { width: 100%; height: 100%; }
+        .btn-large { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 1rem; transition: all 0.15s ease-in-out; background-color: var(--surface); border: 2px solid #334155; position: relative; }
+        .btn-large:active { transform: scale(0.95); }
+        .btn-large:focus, button:focus, select:focus { outline: 4px solid #fbbf24; z-index: 50; }
+        #settings-panel { transition: transform 0.3s ease-in-out, width 0.3s ease-in-out; }
+        #settings-panel.collapsed { transform: translateX(-100%); width: 0; padding: 0; margin: 0; overflow: hidden; border: none; }
+        .control-panel { background-color: rgba(30, 41, 59, 0.95); backdrop-filter: blur(8px); }
+        input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #cbd5e1; border-radius: 4px; outline: none; margin: 12px 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 32px; height: 32px; background: #3b82f6; border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+        .key-guide { position: absolute; top: 0.25rem; right: 0.5rem; font-size: 9px; background-color: rgba(0,0,0,0.6); color: #facc15; padding: 0 4px; border-radius: 4px; border: 1px solid rgba(250, 204, 21, 0.3); font-family: monospace; pointer-events: none; }
+        .key-guide-inline { font-size: 9px; background-color: rgba(0,0,0,0.6); color: #facc15; padding: 0 4px; border-radius: 4px; border: 1px solid rgba(250, 204, 21, 0.3); font-family: monospace; margin-left: 6px; pointer-events: none; display: inline-block; vertical-align: middle; }
+        .key-guide-dark { background-color: rgba(0,0,0,0.8); color: #ffffff; border: 1px solid rgba(0,0,0,0.5); }
+        .hide-shortcuts .key-guide, .hide-shortcuts .key-guide-inline, .hide-shortcuts .key-guide-dark { display: none !important; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2563eb; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; scroll-behavior: smooth; }
+        .layout-transition { transition: all 0.3s ease-in-out; }
+        @keyframes animTap { 0%, 100% { transform: scale(1.1); } 50% { transform: scale(0.9); } }
+        .anim-tap { animation: animTap 1.2s infinite; font-size: 2.5rem; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script>
+        // この2つの変数は、Streamlit (Python) 側から文字列置換で注入されます
+        window.APP_DATA = {"header": {"title": "きらきら星", "timeSignature": "2/4", "keySignature": "0"}, "events": [{"id": "ev-1-0.0", "m": 1, "b": 1.0, "mp3_r": "main:C5.mp3", "raw_r": {"pitches": ["C5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-1-1.0", "m": 1, "b": 2.0, "mp3_r": "main:C5.mp3", "raw_r": {"pitches": ["C5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-2-0.0", "m": 2, "b": 1.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:E3.mp3", "raw_l": {"pitches": ["E3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-2-1.0", "m": 2, "b": 2.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-3-0.0", "m": 3, "b": 1.0, "mp3_r": "main:A5.mp3", "raw_r": {"pitches": ["A5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:F3.mp3", "raw_l": {"pitches": ["F3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-3-1.0", "m": 3, "b": 2.0, "mp3_r": "main:A5.mp3", "raw_r": {"pitches": ["A5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-4-0.0", "m": 4, "b": 1.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:E3.mp3", "raw_l": {"pitches": ["E3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-5-0.0", "m": 5, "b": 1.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:D3.mp3", "raw_l": {"pitches": ["D3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-5-1.0", "m": 5, "b": 2.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-6-0.0", "m": 6, "b": 1.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-6-1.0", "m": 6, "b": 2.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-7-0.0", "m": 7, "b": 1.0, "mp3_r": "main:D5.mp3", "raw_r": {"pitches": ["D5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:G3.mp3", "raw_l": {"pitches": ["G3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-7-1.0", "m": 7, "b": 2.0, "mp3_r": "main:D5.mp3", "raw_r": {"pitches": ["D5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-8-0.0", "m": 8, "b": 1.0, "mp3_r": "main:C5.mp3", "raw_r": {"pitches": ["C5"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-9-0.0", "m": 9, "b": 1.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:E3.mp3", "raw_l": {"pitches": ["E3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-9-1.0", "m": 9, "b": 2.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-10-0.0", "m": 10, "b": 1.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:D3.mp3", "raw_l": {"pitches": ["D3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-10-1.0", "m": 10, "b": 2.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-11-0.0", "m": 11, "b": 1.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-11-1.0", "m": 11, "b": 2.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-12-0.0", "m": 12, "b": 1.0, "mp3_r": "main:D5.mp3", "raw_r": {"pitches": ["D5"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:G3.mp3", "raw_l": {"pitches": ["G3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-13-0.0", "m": 13, "b": 1.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:E3.mp3", "raw_l": {"pitches": ["E3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-13-1.0", "m": 13, "b": 2.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-14-0.0", "m": 14, "b": 1.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:D3.mp3", "raw_l": {"pitches": ["D3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-14-1.0", "m": 14, "b": 2.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-15-0.0", "m": 15, "b": 1.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-15-1.0", "m": 15, "b": 2.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-16-0.0", "m": 16, "b": 1.0, "mp3_r": "main:D5.mp3", "raw_r": {"pitches": ["D5"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:G3.mp3", "raw_l": {"pitches": ["G3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-17-0.0", "m": 17, "b": 1.0, "mp3_r": "main:C5.mp3", "raw_r": {"pitches": ["C5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-17-1.0", "m": 17, "b": 2.0, "mp3_r": "main:C5.mp3", "raw_r": {"pitches": ["C5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-18-0.0", "m": 18, "b": 1.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:E3.mp3", "raw_l": {"pitches": ["E3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-18-1.0", "m": 18, "b": 2.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-19-0.0", "m": 19, "b": 1.0, "mp3_r": "main:A5.mp3", "raw_r": {"pitches": ["A5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:F3.mp3", "raw_l": {"pitches": ["F3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-19-1.0", "m": 19, "b": 2.0, "mp3_r": "main:A5.mp3", "raw_r": {"pitches": ["A5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-20-0.0", "m": 20, "b": 1.0, "mp3_r": "main:G5.mp3", "raw_r": {"pitches": ["G5"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:E3.mp3", "raw_l": {"pitches": ["E3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-21-0.0", "m": 21, "b": 1.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:D3.mp3", "raw_l": {"pitches": ["D3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-21-1.0", "m": 21, "b": 2.0, "mp3_r": "main:F5.mp3", "raw_r": {"pitches": ["F5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-22-0.0", "m": 22, "b": 1.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-22-1.0", "m": 22, "b": 2.0, "mp3_r": "main:E5.mp3", "raw_r": {"pitches": ["E5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-23-0.0", "m": 23, "b": 1.0, "mp3_r": "main:D5.mp3", "raw_r": {"pitches": ["D5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:G3.mp3", "raw_l": {"pitches": ["G3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}, {"id": "ev-23-1.0", "m": 23, "b": 2.0, "mp3_r": "main:D5.mp3", "raw_r": {"pitches": ["D5"], "isChord": false, "duration": "quarter", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "none", "raw_l": {"pitches": ["REST"], "duration": "", "isChord": false}}, {"id": "ev-24-0.0", "m": 24, "b": 1.0, "mp3_r": "main:C5.mp3", "raw_r": {"pitches": ["C5"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}, "mp3_l": "main:C3.mp3", "raw_l": {"pitches": ["C3"], "isChord": false, "duration": "half", "dotCount": 0, "graceNotes": [], "accidental": null, "hasFermata": false, "tie": null, "tupletValue": null}}]};
+        window.MUSIC_DICT = {"PITCH": {"C#": {"disp": "ド♯", "speech": "ど、しゃーぷ"}, "D#": {"disp": "レ♯", "speech": "れ、しゃーぷ"}, "F#": {"disp": "ファ♯", "speech": "ふぁ、しゃーぷ"}, "G#": {"disp": "ソ♯", "speech": "そ、しゃーぷ"}, "A#": {"disp": "ラ♯", "speech": "ら、しゃーぷ"}, "Cb": {"disp": "ド♭", "speech": "ど、ふらっと"}, "Db": {"disp": "レ♭", "speech": "れ、ふらっと"}, "Eb": {"disp": "ミ♭", "speech": "み、ふらっと"}, "Fb": {"disp": "ファ♭", "speech": "ふぁ、ふらっと"}, "Gb": {"disp": "ソ♭", "speech": "そ、ふらっと"}, "Ab": {"disp": "ラ♭", "speech": "ら、ふらっと"}, "Bb": {"disp": "シ♭", "speech": "し、ふらっと"}, "C": {"disp": "ド", "speech": "ど"}, "D": {"disp": "レ", "speech": "れ"}, "E": {"disp": "ミ", "speech": "み"}, "F": {"disp": "ファ", "speech": "ファ"}, "G": {"disp": "ソ", "speech": "そ"}, "A": {"disp": "ラ", "speech": "ら"}, "B": {"disp": "シ", "speech": "し"}, "REST": {"disp": "休符", "speech": "きゅうふ"}}, "LENGTH": {"128th": {"disp": "128分音符", "speech": "ひゃくにじゅうはちぶおんぷ"}, "64th": {"disp": "64分音符", "speech": "ろくじゅうよんぶおんぷ"}, "32nd": {"disp": "32分音符", "speech": "さんじゅうにぶおんぷ"}, "16th": {"disp": "16分音符", "speech": "じゅうろくぶおんぷ"}, "eighth": {"disp": "8分音符", "speech": "8ぶおんぷ"}, "quarter": {"disp": "4分音符", "speech": "しぶおんぷ"}, "half": {"disp": "2分音符", "speech": "にぶおんぷ"}, "whole": {"disp": "全音符", "speech": "ぜんおんぷ"}}, "DIRECTIONS": {"repeat_start": {"disp": "𝄆 リピート開始", "speech": "リピート開始"}, "repeat_end": {"disp": "𝄇 リピート終了", "speech": "リピート終了、リピート開始へ戻る"}, "ending_1": {"disp": "1. １番カッコ", "speech": "１番かっこ、１回目だけ演奏"}, "ending_2": {"disp": "2. ２番カッコ", "speech": "２番かっこ、２回目だけ演奏"}, "D.C.": {"disp": "D.C.", "speech": "ダ・カーポ、はじめにもどる"}, "D.S.": {"disp": "D.S.", "speech": "ダル・セーニョ、セーニョへもどる"}, "Fine": {"disp": "Fine", "speech": "フィーネ、ここでおわり"}, "to Coda": {"disp": "to Coda", "speech": "コーダ、コーダへ進む"}, "Coda": {"disp": "Coda", "speech": "コーダ"}}, "KEY_SIG": {"0": "調号なしハ長調または、イたん調", "1": "シャープ１つ、ト長調または、ホたん調", "2": "シャープ２つ、ニ長調または、ロたん調", "3": "シャープ３つ、イ長調または、嬰ヘたん調", "4": "シャープ４つ、ホ長調または、嬰ハたん調", "5": "シャープ５つ、ロ長調または、嬰トたん調", "-1": "フラット１つ、ヘ長調または、ニたん調", "-2": "フラット２つ、変ロ長調または、トたん調", "-3": "フラット３つ、変ホ長調または、ハたん調", "-4": "フラット４つ、変イ長調または、ヘたん調", "-5": "フラット５つ、変ニ長調または、変ロたん調"}};
+        window.IS_TUTORIAL = true;
+        window.VOICE_SUPPORT = true; // 👈 ★追加
+    </script>
+
+    <script type="text/babel">
+// ui_components.js
+const { useState, useMemo, useRef, useEffect, Component } = React;
+
+class ErrorBoundary extends Component {
+    constructor(props) { super(props); this.state = { hasError: false, errorMsg: "" }; }
+    static getDerivedStateFromError(error) { return { hasError: true, errorMsg: error.toString() }; }
+    render() {
+        if (this.state.hasError) return (
+            <div className="p-8 bg-red-900 text-white h-[100dvh] flex flex-col items-center justify-center text-center">
+                <h2 className="text-3xl font-bold mb-4">⚠️ UIエラー</h2>
+                <pre className="bg-black p-4 rounded text-left overflow-auto max-w-2xl">{this.state.errorMsg}</pre>
+            </div>
+        );
+        return this.props.children;
+    }
+}
+
+const formatNoteStr = (text) => {
+    if (!text) return text;
+    const parts = text.split(/(♯|♭|x|♮)/g);
+    return parts.map((part, i) => /^(♯|♭|x|♮)$/.test(part) ? <span key={i} className="text-[0.65em] align-top opacity-90 mx-[1px]">{part}</span> : part);
+};
+
+// カード表示の部品（後ほどspeechやmusicの関数と連携します）
+const CardDisplay = ({ info, playMode, isLeft }) => {
+    if (info.isRest) return <span className="font-bold text-slate-400 text-center w-full block">休符</span>;
+    const colorClass = isLeft ? "text-slate-600" : "text-slate-800";
+    const noteCount = info.notes.length;
+    let textSizeClass = "text-4xl md:text-5xl"; 
+    if (noteCount === 3) textSizeClass = "text-3xl md:text-4xl"; 
+    if (noteCount >= 4) textSizeClass = "text-2xl md:text-3xl"; 
+    
+    return (
+        <div className="flex flex-col md:flex-row md:flex-wrap items-center justify-center md:items-baseline gap-x-1.5 leading-tight w-full">
+            {info.prefix && <span className="text-[10px] text-slate-400 font-bold mb-0.5 md:mb-0 md:self-auto">{info.prefix}</span>}
+            <div className="flex flex-wrap items-baseline justify-center gap-1">
+                {info.graceNotes && info.graceNotes.length > 0 && (
+                    <div className="flex gap-0.5 items-baseline text-slate-500 mr-1 bg-slate-100 px-1.5 py-0.5 rounded shadow-inner">
+                        <span className="text-[9px] font-bold self-center text-slate-400 mr-0.5">(装飾)</span>
+                        {info.graceNotes.map((g, i) => (<span key={`g-${i}`} className={`text-xl md:text-2xl font-black tracking-tighter`}>{formatNoteStr(g.disp)}</span>))}
+                    </div>
+                )}
+                <div className="flex gap-1 items-baseline flex-wrap justify-center">
+                    {info.notes.map((n, i) => (<span key={i} className={`${textSizeClass} font-black ${colorClass} tracking-tight`}>{formatNoteStr(n)}</span>))}
+                </div>
+                {playMode !== "①音名のみ" && info.suffix && (<span className="text-xs text-slate-400 font-bold ml-1 self-center shrink-0">{info.suffix}</span>)}
+            </div>
+        </div>
+    );
+};
+// speech_engine.js
+
+const announce = (setAnnounceText, text) => { setAnnounceText(""); setTimeout(() => setAnnounceText(text), 50); };
+
+const speak = (text, tempo = 100) => {
+    return new Promise((resolve) => {
+        if (!text) return resolve();
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP'; u.rate = 1.1 * (tempo / 100);
+        u.onend = resolve; u.onerror = resolve;
+        window.speechSynthesis.speak(u);
+    });
+};
+
+const formatPitchWithMode = (pitchStr, octaveMode, dict) => {
+    if (!pitchStr || pitchStr === "REST") return { disp: "休符", speech: "きゅうふ", isRest: true };
+    const match = pitchStr.match(/([A-G])([#b]*)(-?\d+)/);
+    if (!match) return { disp: pitchStr, speech: pitchStr, isRest: false };
+    const noteEng = match[1]; const acc = match[2]; const oct = parseInt(match[3] || "4", 10);
+    
+    if (octaveMode === "①C4（数字式）") {
+        const numEngDict = {'1':'ワン','2':'ツー','3':'スリー','4':'フォー','5':'ファイブ','6':'シックス','7':'セブン','8':'エイト'};
+        const engSpeechDict = {'C':'シー','D':'ディー','E':'イー','F':'エフ','G':'ジー','A':'エー','B':'ビー'};
+        let accSpeech = acc.includes('#') ? "、しゃーぷ" : (acc.includes('b') ? "、ふらっと" : "");
+        return { disp: `${noteEng}${acc.replace(/#/g,'♯').replace(/b/g,'♭')}${oct}`, speech: `${engSpeechDict[noteEng] || noteEng}${accSpeech}、${numEngDict[oct] || oct}`, isRest: false };
+    } else if (octaveMode === "②一点ハ（日本式）") {
+        const jaBaseDict = {'C':'ハ','D':'ニ','E':'ホ','F':'ヘ','G':'ト','A':'イ','B':'ロ'};
+        const jaSpeechDict = {'C':'は','D':'に','E':'ほ','F':'へ','G':'と','A':'イ','B':'ろ'};
+        let accJa = acc === '#' ? "嬰" : (acc === 'b' ? "変" : "");
+        let accSpeech = acc === '#' ? "えい" : (acc === 'b' ? "へん" : "");
+        const ittenPrefixDisp = {1:"下二点", 2:"下一点", 3:"大字", 4:"一点", 5:"二点", 6:"三点", 7:"四点", 8:"五点"}[oct] || `${oct}点`;
+        const ittenPrefixSpeech = {1:"しもにてん", 2:"しもいってん", 3:"おおもじ", 4:"いってん", 5:"にてん", 6:"さんてん", 7:"よんてん", 8:"ごてん"}[oct] || `${oct}てん`;
+        return { disp: `${ittenPrefixDisp}${accJa}${jaBaseDict[noteEng] || noteEng}`, speech: `${ittenPrefixSpeech}、${accSpeech}${jaSpeechDict[noteEng] || noteEng}`, isRest: false };
+    } else {
+        let baseDisp = dict.PITCH[noteEng]?.disp || noteEng; 
+        let baseSpeech = dict.PITCH[noteEng]?.speech || noteEng; 
+        let accDisp = acc === '#' ? "♯" : (acc === 'b' ? "♭" : "");
+        let accSpeech = acc === '#' ? "、しゃーぷ" : (acc === 'b' ? "、ふらっと" : "");
+        return { disp: `${baseDisp}${accDisp}`, speech: `${baseSpeech}${accSpeech}`, isRest: false };
+    }
+};
+
+const parseMusicData = (rawData, relData, octaveMode, dict, playMode) => {
+    if (!rawData || !rawData.pitches || rawData.pitches[0] === "REST") return { isRest: true, prefix: "", notes: [], graceNotes: [], suffix: "", speech: "きゅうふ" };
+    
+    // getMidiNoteは外部(music_engine)から呼ぶ想定ですが、補助的にここに定義するか外部参照します
+    const getMidi = (p) => {
+        const m = p.match(/([A-G])([#b]*)(-?\d+)/);
+        if(!m) return -1;
+        const b = { 'C':0, 'D':2, 'E':4, 'F':5, 'G':7, 'A':9, 'B':11 }[m[1]];
+        let n = b + (parseInt(m[3] || "4", 10) + 1) * 12;
+        if (m[2].includes('#')) n += m[2].length;
+        if (m[2].includes('b')) n -= m[2].length;
+        return n;
+    };
+
+    let sortedPitches = [...rawData.pitches];
+    if (sortedPitches.length > 1) sortedPitches.sort((a, b) => getMidi(a) - getMidi(b));
+    let dispP = []; let speechP = [];
+    sortedPitches.forEach(p => { 
+        const f = formatPitchWithMode(p, octaveMode, dict); 
+        dispP.push(f.disp); speechP.push(f.speech); 
+    });
+    
+    let prefix = "";
+    if (octaveMode === "③中央ド（オリジナル）" && relData?.disp) prefix += relData.disp + " ";
+    
+    let graceNotes = []; let graceSpeech = "";
+    if (rawData.graceNotes?.length > 0) {
+        graceNotes = rawData.graceNotes.map(g => formatPitchWithMode(g, octaveMode, dict));
+        graceSpeech = `そうしょくおん、${graceNotes.map(g=>g.speech).join('')}をひいてから、`;
+    }
+
+    let pitchSpeechStr = graceSpeech + (rawData.isChord || sortedPitches.length > 1 ? "わおん、" : "") + speechP.join('、');
+    if (octaveMode === "③中央ド（オリジナル）" && relData?.speech) pitchSpeechStr = relData.speech + pitchSpeechStr;
+    
+    const durationStr = rawData.duration || "";
+    const isDot = durationStr.startsWith("DOT_");
+    const dInfo = dict.LENGTH[durationStr.replace("DOT_", "")] || { disp: "", speech: "" };
+    let lengthDispStr = (rawData.dotCount > 0 || isDot ? "付点" : "") + dInfo.disp;
+    let lengthSpeechStr = (dInfo.speech || "").replace(/8分音符/g, "8ぶおんぷ").replace(/はちぶおんぷ/g, "8ぶおんぷ");
+    
+    if (rawData.tupletValue) { lengthSpeechStr = `${rawData.tupletValue === 3 ? "さん" : (rawData.tupletValue === 6 ? "ろく" : rawData.tupletValue)}れんぷの、${lengthSpeechStr}`; lengthDispStr = `${rawData.tupletValue}連符 ` + lengthDispStr; }
+    if (rawData.dotCount === 1 && !isDot) lengthSpeechStr = "ふてんの、" + lengthSpeechStr;
+    if (rawData.dotCount === 2) lengthSpeechStr = "ふくふてん２つの、" + lengthSpeechStr;
+    if (rawData.hasFermata) { lengthSpeechStr += "、フェルマータ"; lengthDispStr += "(フェルマータ)"; }
+
+    let finalSpeech = `${pitchSpeechStr}、${lengthSpeechStr}`;
+    const tieData = rawData.tie;
+    if (tieData === "start" || (Array.isArray(tieData) && tieData.includes("start"))) finalSpeech = `${pitchSpeechStr}、タイでのばす、${lengthSpeechStr}`;
+    else if (tieData === "continue" || tieData === "stop" || (Array.isArray(tieData) && (tieData.includes("continue") || tieData.includes("stop")))) finalSpeech = `タイで伸ばしている、${lengthSpeechStr}、${pitchSpeechStr}`;
+    
+    if (playMode === "①音名のみ") finalSpeech = pitchSpeechStr; 
+    
+    return { isRest: false, prefix: prefix.trim(), graceNotes: graceNotes, notes: dispP, suffix: lengthDispStr, speech: finalSpeech };
+};
+// music_engine.js
+
+const getMidiNote = (pitchStr) => {
+    if (!pitchStr || pitchStr === "REST") return -1;
+    const match = pitchStr.match(/([A-G])([#b]*)(-?\d+)/);
+    if (!match) return -1; 
+    const baseNotes = { 'C':0, 'D':2, 'E':4, 'F':5, 'G':7, 'A':9, 'B':11 };
+    let note = baseNotes[match[1]];
+    const acc = match[2];
+    if (acc.includes('#')) note += acc.length;
+    if (acc.includes('b')) note -= acc.length;
+    return (parseInt(match[3] || "4", 10) + 1) * 12 + note;
+};
+
+const getDurationQ = (raw) => {
+    if (!raw || !raw.duration) return 0;
+    const durMap = { 'whole': 4.0, 'half': 2.0, 'quarter': 1.0, 'eighth': 0.5, '16th': 0.25, '32nd': 0.125 };
+    const baseDurStr = raw.duration.replace("DOT_", "");
+    let val = durMap[baseDurStr] || 1.0;
+    if (raw.duration.startsWith("DOT_") || raw.dotCount > 0) val *= 1.5;
+    if (raw.tupletValue) val *= (2 / raw.tupletValue); 
+    return val;
+};
+
+// メトロノームやシンセ音の関数（ここを分けることでUI修正の影響を受けません）
+const playMetronome = (audioCtx, isStrong, time, activeOscs) => {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    if (isStrong) { osc.frequency.setValueAtTime(1046.50, time); gain.gain.setValueAtTime(0.15, time); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3); } 
+    else { osc.frequency.setValueAtTime(880, time); gain.gain.setValueAtTime(0.08, time); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1); }
+    osc.start(time); osc.stop(time + 0.3);
+    activeOscs.push(osc); 
+};
+
+const playSynthNote = (audioCtx, midi, time, volBalance, duration = 1.6, isLeft = false, activeOscs) => {
+    if (!audioCtx) return;
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, time);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0, time);
+    let volMulti = isLeft ? ((100 - volBalance) / 50) : (volBalance / 50);
+    const peakVol = (isLeft ? 0.3 : 0.1) * volMulti;
+    if (peakVol <= 0.005) return;
+    gain.gain.linearRampToValueAtTime(peakVol, time + 0.02); 
+    gain.gain.exponentialRampToValueAtTime(0.001, time + duration - 0.1);
+    osc.start(time); osc.stop(time + duration);
+    activeOscs.push(osc); 
+};
+const App = () => {
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [showGuide, setShowGuide] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false); 
+    const [isRightHanded, setIsRightHanded] = useState(true);
+    const [mobileView, setMobileView] = useState('score');
+    // 👈 ★修正：タブレットのデフォルトを「楽譜のみ」に
+    const [tabletLayout, setTabletLayout] = useState('score_only');
+    // 👈 ★追加：音声サポートの状態（Pythonからの設定を引き継ぐ）
+    const [isVoiceEnabled, setIsVoiceEnabled] = useState(window.VOICE_SUPPORT === true);
+    // ==========================================
+    // 👇 修正：iPhone対策 ＋ 喋り終わるまで待つ ＋ ブラウザの「物忘れバグ」対策！
+    // ==========================================
+    const speak = (text, tempoPercent = 100) => {
+        return new Promise((resolve) => {
+            // 音声がオフの時はすぐに次（ピアノ）へ進む
+            if (!isVoiceEnabled) {
+                resolve();
+                return;
+            }
+            
+            // 前の喋りをキャンセル
+            window.speechSynthesis.cancel();
+            
+            // iPhone対策の「少し待つ」魔法
+            setTimeout(() => {
+                let msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'ja-JP';
+                
+                // 👇 ★超重要：パソコンくんの「勝手にゴミ箱に捨てるバグ」を防ぐおまじない！
+                window._currentUtterance = msg;
+                
+                // 喋り終わった時、またはエラーになった時に「終わったよ！」と報告する
+                msg.onend = () => {
+                    resolve();
+                };
+                msg.onerror = () => {
+                    resolve();
+                };
+                
+                window.speechSynthesis.speak(msg);
+            }, 50);
+        });
+    };
+
+    const announce = (setter, text) => {
+        setter(text);
+        if (!isVoiceEnabled) return;
+        
+        window.speechSynthesis.cancel();
+        
+        // ★修正：こちらも50ミリ秒待機
+        setTimeout(() => {
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ja-JP';
+            window.speechSynthesis.speak(msg);
+        }, 50);
+    };
+    // ==========================================
+    const [tempo, setTempo] = useState(100);
+    const [announceText, setAnnounceText] = useState("");
+    const [jumpInput, setJumpInput] = useState("");
+    const [isPianoLoading, setIsPianoLoading] = useState(true);
+    const jumpTimerRef = useRef(null);
+    const [useMetronome, setUseMetronome] = useState(true);
+    const [useCountIn, setUseCountIn] = useState(true);
+    const [volBalance, setVolumeBalance] = useState(50);
+    
+    const [part, setPart] = useState("右手");
+    const [playMode, setPlayMode] = useState("normal");
+    const [octaveMode, setOctaveMode] = useState("③中央ド（オリジナル）");
+    const [measure, setMeasure] = useState(0);
+        // ==========================================
+    // 👇 スピードアップ魔法：小節番号の「早見表」を超・強化！
+    // ==========================================
+    const measureMap = useMemo(() => {
+        const map = {};
+        if (Array.isArray(enrichedEvents) && enrichedEvents.length > 0) {
+            // 1. まず、音符がある小節の番号を登録
+            enrichedEvents.forEach(ev => {
+                if (ev.m !== undefined && ev.originalM !== undefined) {
+                    if (map[ev.m] === undefined) {
+                        map[ev.m] = Number(ev.originalM); // 確実に数字にして登録
+                    }
+                }
+            });
+            
+            // 2. お休み（休符）の小節の番号を推測して「穴埋め」する！
+            const limit = maxMeasure || 1000;
+            let lastOriginal = 0;
+            for (let i = 1; i <= limit; i++) {
+                if (map[i] !== undefined) {
+                    lastOriginal = map[i]; // 音符があれば更新
+                } else {
+                    lastOriginal++; // 休符なら「前の小節＋1だろう」と推測して埋める！
+                    map[i] = lastOriginal;
+                }
+            }
+        }
+        return map;
+    }, [enrichedEvents, maxMeasure]);
+    // ==========================================
+    // 👇 修正：超・親切なおしゃべり専用係！（絶対見つけるマン版）
+    // ==========================================
+    const speakMeasureInfo = (targetM) => {
+        const numTarget = Number(targetM);
+        if (numTarget === 0) {
+            speak("きょくじょうほう", tempo);
+        } else {
+            // 1. まず早見表を見る
+            let origM = measureMap[numTarget];
+            
+            // 2. 早見表になければ、楽譜データ(enrichedEvents)から直接探し出す！（安全ネット）
+            if (origM === undefined && Array.isArray(enrichedEvents)) {
+                const ev = enrichedEvents.find(e => e.m === numTarget);
+                origM = ev ? ev.originalM : numTarget;
+            } else if (origM === undefined) {
+                origM = numTarget;
+            }
+
+            // 3. 喋る！
+            if (numTarget === Number(origM)) {
+                speak(`${origM}しょうせつめ`, tempo);
+            } else {
+                speak(`${origM}しょうせつめ。つうさん、${numTarget}しょうせつめ`, tempo);
+            }
+        }
+    };
+    const [blockSize, setBlockSize] = useState(8); 
+    const [playing, setPlaying] = useState(false);
+    const [highlightId, setHighlightId] = useState(null);
+    const [activeMeasure, setActiveMeasure] = useState(null);
+    const [tapMode, setTapMode] = useState(false);
+
+    // --- ★ここからチュートリアル用の状態管理（重複を消して1回だけに整理！） ---
+    const [isTutorial, setIsTutorial] = useState(window.IS_TUTORIAL === true);    const [tutorialStep, setTutorialStep] = useState(0);
+    const [controlMode, setControlMode] = useState(null); 
+    const [deviceType, setDeviceType] = useState(null); 
+    const [tutorialCount, setTutorialCount] = useState(0);
+    const tutorialStateRef = useRef({ step: 0, count: 0, active: true });
+    useEffect(() => {
+        tutorialStateRef.current = { step: tutorialStep, count: tutorialCount, active: isTutorial };
+    }, [tutorialStep, tutorialCount, isTutorial]);
+    // =======================================================
+    // 🎓 自動アナウンス機能（useEffect）
+    // =======================================================
+    // 🎓 チュートリアル専用アナウンス
+    useEffect(() => {
+        // 本番画面の時は何もしない（上の本番専用係に任せる！）
+        if (!isTutorial) return;
+
+        const tutorialSpeeches = {
+            0: "ご利用端末をお選びください。",
+            1: "練習したい操作方法をお選びください。",
+            2: "ボイスオーバーをオフにしてください。準備ができたら、画面のどこでもいいので、タップしてください。",
+            3: "それではさっそく、実際の練習画面で体験してみましょう！画面をトントンと2回タップして、きらきら星を聞いてみましょう。準備ができたら、もう一度2回タップして止めてください。",
+            4: "次は、自分のペースで１音ずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
+            5: "素晴らしい！次は1つ前の音に戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
+            6: "バッチリです！今の音をもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押しして音を確認できたらクリアです。",
+            7: "お見事です！次は小節の移動です。2本指で、画面を左右にスワイプすると小節を移動します。2回スワイプしてみましょう。",
+            8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。",
+            
+            // 👇 ★追加：ステップ9（エンディング）のセリフ！
+            9: "おめでとうございます！すべての操作をマスターしました。これで、自由自在に曲を聴きながら練習できますね！わかりづらい操作や困ったことがありましたら、設定パネルの、アンケート、ご報告ボタンからいつでもお知らせください。チュートリアルはここまでです。さあ、練習を始めましょう！"
+        };
+        
+        const speechText = tutorialSpeeches[tutorialStep];
+        if (speechText) speak(speechText, tempo);
+
+        // 👇 ★修正：ステップ9になったら、アナウンスが絶対に終わるように長めに待つ！
+        if (tutorialStep === 9) {
+            const timer = setTimeout(() => {
+                handleBackToTop();
+            }, 35000); // 👈 20000（20秒）から 35000（35秒）に延長！
+            return () => clearTimeout(timer); 
+        }
+
+    }, [tutorialStep, isTutorial]);
+
+    const handleModeSelect = (mode) => {
+        setControlMode(mode);
+        setTapMode(mode === 'tap'); 
+        setTutorialStep(2); 
+    };
+
+    const clickTimerRef = useRef(null);
+
+    const touchRef = useRef({ startX: 0, startY: 0, maxTouches: 0, startTime: 0, timer: null, lastTap: 0, handled: false });
+    const appData = window.APP_DATA || { header: {}, events: [] };
+    const rawEvents = appData.events || [];
+    const headerInfo = appData.header || {};
+    const dict = window.MUSIC_DICT || { PITCH: {}, LENGTH: {}, DIRECTIONS: {}, KEY_SIG: {} };
+
+    const playingRef = useRef(false);
+    const audioCtxRef = useRef(null);
+    const pianoRef = useRef(null);
+    const activeOscs = useRef([]); 
+    const timeoutIds = useRef([]); 
+
+    useEffect(() => {
+        const preventSystemGestures = (e) => { if (e.touches.length > 1) e.preventDefault(); };
+        document.addEventListener('touchmove', preventSystemGestures, { passive: false, capture: true });
+        return () => document.removeEventListener('touchmove', preventSystemGestures, { capture: true });
+    }, []);
+
+    const unrolledEvents = useMemo(() => {
+        const getDirs = (m) => {
+            const mEvents = rawEvents.filter(e => e.m === m);
+            let d = [];
+            mEvents.forEach(e => {
+                if (e.raw_r?.directions) d.push(...e.raw_r.directions);
+                if (e.raw_l?.directions) d.push(...e.raw_l.directions);
+            });
+            return [...new Set(d)];
+        };
+        const origMaxM = Math.max(...rawEvents.map(e => e.m), 1);
+        let seq = []; let m = 1; let repeatStart = 1; let visited = {}; let isDSDC = false;
+
+        let loopGuard = 0;
+        while (m <= origMaxM && loopGuard < 2000) {
+            loopGuard++;
+            const dirs = getDirs(m);
+            visited[m] = (visited[m] || 0) + 1;
+            if (dirs.includes("repeat_start") || dirs.includes("Segno")) repeatStart = m;
+            if ((dirs.includes("ending_1") || dirs.includes("1.")) && visited[m] > 1) { m++; continue; }
+            seq.push(m); 
+            if (isDSDC && dirs.includes("Fine")) break;
+            if (isDSDC && (dirs.includes("to Coda") || dirs.includes("To Coda"))) {
+                let codaM = m + 1;
+                while (codaM <= origMaxM && !getDirs(codaM).includes("Coda")) codaM++;
+                if (codaM <= origMaxM) { m = codaM; continue; }
+            }
+            if (dirs.includes("repeat_end")) {
+                if (!visited[`jumped_repeat_${m}`]) { visited[`jumped_repeat_${m}`] = true; m = repeatStart; continue; }
+            }
+            if (dirs.includes("D.C.") && !isDSDC) { isDSDC = true; m = 1; continue; }
+            if (dirs.includes("D.S.") && !isDSDC) {
+                isDSDC = true; let segnoM = 1;
+                for (let sm=1; sm<=origMaxM; sm++) if (getDirs(sm).includes("Segno")) segnoM = sm;
+                m = segnoM; continue;
+            }
+            m++;
+        }
+
+        let newEvents = [];
+        seq.forEach((originalM, seqIdx) => {
+            const mEvents = rawEvents.filter(e => e.m === originalM);
+            mEvents.forEach(e => {
+                const allDirsForThisEvent = Array.from(new Set([...(e.raw_r?.directions || []), ...(e.raw_l?.directions || [])]));
+                newEvents.push({ ...e, originalM: originalM, m: seqIdx + 1, uniqueId: `${e.id}_${seqIdx}`, allDirs: allDirsForThisEvent });
+            });
+        });
+        return newEvents;
+    }, [rawEvents]);
+
+    const maxMeasure = useMemo(() => Math.max(...unrolledEvents.map(e => e.m), 1), [unrolledEvents]);
+
+    useEffect(() => {
+        let retryCount = 0;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        audioCtxRef.current = ctx;
+
+        const unlockAudioContext = () => { if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume(); };
+        window.addEventListener('click', unlockAudioContext);
+        window.addEventListener('keydown', unlockAudioContext);
+        window.addEventListener('touchstart', unlockAudioContext);
+
+        const initPiano = () => {
+            if (window.Soundfont) {
+                window.Soundfont.instrument(ctx, 'acoustic_grand_piano', { soundfont: 'MusyngKite', format: 'mp3' })
+                .then(piano => { pianoRef.current = piano; setIsPianoLoading(false); })
+                .catch(() => setIsPianoLoading(false));
+            } else {
+                retryCount++;
+                if (retryCount < 50) setTimeout(initPiano, 100); else setIsPianoLoading(false);
+            }
+        };
+        initPiano();
+
+        return () => {
+            window.removeEventListener('click', unlockAudioContext);
+            window.removeEventListener('keydown', unlockAudioContext);
+            window.removeEventListener('touchstart', unlockAudioContext);
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close();
+        };
+    }, []);
+
+    const stopPlayback = () => {
+        playingRef.current = false; setPlaying(false); setActiveMeasure(null); window.speechSynthesis.cancel(); 
+        if (pianoRef.current) { try { pianoRef.current.stop(); } catch(e){} }
+        activeOscs.current.forEach(osc => { try { osc.stop(); } catch(e){} });
+        activeOscs.current = [];
+        timeoutIds.current.forEach(id => clearTimeout(id));
+        timeoutIds.current = [];
+    };
+
+    const unlockAudio = () => { if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume(); };
+
+    // 🎵 本番画面（チュートリアル以外）の初期アナウンス専用
+    useEffect(() => {
+        // ピアノの読み込み(isPianoLoading)を待たない！開いたら即喋る！
+        if (!isTutorial) {
+            const msg = `楽譜画面です。現在の設定は、${part}、${blockSize === 'all' ? '全曲' : blockSize + '小節'}再生です。`;
+            // 古い announce ではなく、今回作った安全な speak を使う
+            speak(msg, tempo);
+        }
+    // 👇 依存配列を最小限にして、「画面を開いた時」の1回だけにする
+    }, [isTutorial]);
+
+    const handleBackToTop = async () => {
+        if (playing) stopPlayback();
+        
+        // 喋り終わるのをしっかり待つ
+        await speak("最初の画面に戻ります。");
+
+        // 👇 修正：身代わりボタンを押すのをやめて、アプリ全体(親画面)を確実にリロードして初期化する！
+        try {
+            window.parent.location.reload();
+        } catch (e) {
+            window.location.reload(); // 念のためのセーフティネット
+        }
+    };
+    
+    const handleDownloadPDF = () => {
+        const buttons = Array.from(window.parent.document.querySelectorAll('button'));
+        const btn = buttons.find(b => b.innerText.includes('HiddenPDFBtn'));
+        if (btn) btn.click();
+        else { const fallbackBtn = window.parent.document.querySelector('[data-testid="stDownloadButton"] button'); if (fallbackBtn) fallbackBtn.click(); else alert("PDFの準備ができていません。"); }
+    };
+
+    const playNotesWithInstrument = (raw, time, vol = 2.0, isLeft = false) => {
+        if (!audioCtxRef.current || !raw) return;
+        let volMulti = isLeft ? ((100 - volBalance) / 50) : (volBalance / 50);
+        let finalVol = vol * volMulti;
+        if (finalVol <= 0.01) return;
+
+        const playSingleNote = (midi, t, dur, g) => {
+            if (pianoRef.current) { try { pianoRef.current.play(midi, t, { duration: dur, gain: g }); } catch(e){} }
+            // 外部関数を使用
+            playSynthNote(audioCtxRef.current, midi, t, volBalance, dur, isLeft, activeOscs.current);
+        };
+
+        if (raw.graceNotes && raw.graceNotes.length > 0) {
+            const graceOffset = 0.08; 
+            raw.graceNotes.forEach((p, i) => {
+                const midi = getMidiNote(p);
+                if (midi !== -1) {
+                    const gTime = time - ((raw.graceNotes.length - i) * graceOffset);
+                    playSingleNote(midi, gTime, 0.5, finalVol * 0.75);
+                }
+            });
+        }
+
+        let isTied = false;
+        if (raw.tie === "continue" || raw.tie === "stop") isTied = true;
+        if (Array.isArray(raw.tie) && (raw.tie.includes("continue") || raw.tie.includes("stop"))) isTied = true;
+        if (isTied) return;
+
+        if (raw.pitches) {
+            raw.pitches.forEach(p => {
+                if (p === "REST") return;
+                const midi = getMidiNote(p);
+                if (midi !== -1) playSingleNote(midi, time, 2.0, finalVol);
+            });
+        }
+    };
+
+    const enrichedEvents = useMemo(() => {
+        const timeSig = headerInfo.timeSignature || "4/4";
+        const parts = timeSig.split('/').map(Number);
+        const beatsPerMeasure = parts[0] || 4;
+        const beatValue = parts[1] || 4; 
+        
+        const quarterNotesPerBeat = 4 / beatValue;
+        const expectedMeasureLengthQ = beatsPerMeasure * quarterNotesPerBeat;
+        
+        const measureStartQs = {};
+        let currentQ = 0;
+        const maxM = Math.max(...unrolledEvents.map(e => e.m), 1);
+        const measureShifts = {};
+        
+        for (let m = 1; m <= maxM; m++) {
+            measureStartQs[m] = currentQ;
+            const eventsInM = unrolledEvents.filter(e => e.m === m);
+            let maxQInM = 0;
+            eventsInM.forEach(ev => {
+                const durR = ev.raw_r ? getDurationQ(ev.raw_r) : 0;
+                const durL = ev.raw_l ? getDurationQ(ev.raw_l) : 0;
+                const endQ = (ev.b - 1) + Math.max(durR, durL);
+                if (endQ > maxQInM) maxQInM = endQ;
+            });
+            let length = expectedMeasureLengthQ;
+            if (maxQInM > 0 && maxQInM < expectedMeasureLengthQ - 0.01) { length = maxQInM; }
+            currentQ += length;
+            if (m === 1 && length < expectedMeasureLengthQ) { measureShifts[1] = expectedMeasureLengthQ - length; }
+        }
+
+        let lastMidiR = null; let lastMidiL = null;
+        const getRelText = (prevMidi, currMidi) => {
+            if (prevMidi === null || currMidi === null || prevMidi === -1 || currMidi === -1) return { disp: "", speech: "" };
+            const diff = currMidi - prevMidi; const abs = Math.abs(diff);
+            if (abs < 5) return { disp: "", speech: "" };
+            let dirDisp = diff > 0 ? "高い" : "低い"; let dirSpeech = diff > 0 ? "たかい" : "ひくい";
+            if (abs >= 5 && abs <= 11) return { disp: `(少し${dirDisp})`, speech: `すこし${dirSpeech}、` };
+            if (abs >= 12 && abs <= 23) return { disp: `(1oct${dirDisp})`, speech: `１オクターブ${dirSpeech}、` };
+            if (abs >= 24) return { disp: `(2oct${dirDisp})`, speech: `２オクターブ${dirSpeech}、` };
+            return { disp: "", speech: "" };
+        };
+
+        return unrolledEvents.map(ev => {
+            const shiftQ = measureShifts[ev.m] || 0;
+            const actualOffsetQ = (ev.b - 1) + shiftQ;
+            const musicalBeat = 1 + (actualOffsetQ / quarterNotesPerBeat);
+            const displayBeat = Number.isInteger(musicalBeat) ? musicalBeat.toString() : musicalBeat.toFixed(2).replace(/\.?0+$/, '');
+            const absoluteQ = measureStartQs[ev.m] + (ev.b - 1);
+
+            let currentHighestR = null;
+            if (ev.raw_r?.pitches?.[0] && ev.raw_r.pitches[0] !== "REST") {
+                const midis = ev.raw_r.pitches.map(getMidiNote).filter(m => m !== -1);
+                if (midis.length > 0) currentHighestR = Math.max(...midis);
+            }
+            const relR = getRelText(lastMidiR, currentHighestR);
+            if (currentHighestR !== null) lastMidiR = currentHighestR;
+
+            let currentLowestL = null;
+            if (ev.raw_l?.pitches?.[0] && ev.raw_l.pitches[0] !== "REST") {
+                const midis = ev.raw_l.pitches.map(getMidiNote).filter(m => m !== -1);
+                if (midis.length > 0) currentLowestL = Math.min(...midis);
+            }
+            const relL = getRelText(lastMidiL, currentLowestL);
+            if (currentLowestL !== null) lastMidiL = currentLowestL;
+
+            return { ...ev, relR, relL, actualOffsetQ, displayBeat, musicalBeat, absoluteQ };
+        });
+    }, [unrolledEvents, headerInfo.timeSignature]);
+
+    const endMeasure = useMemo(() => blockSize === 'all' ? maxMeasure : Math.min(maxMeasure, Math.max(1, measure) + blockSize - 1), [measure, blockSize, maxMeasure]);
+    const currentEvents = useMemo(() => enrichedEvents.filter(e => e.m >= Math.max(1, measure) && e.m <= endMeasure), [measure, endMeasure, enrichedEvents]);
+    const currentIndex = useMemo(() => currentEvents.findIndex(e => e.uniqueId === highlightId), [currentEvents, highlightId]);
+
+    useEffect(() => {
+        if (highlightId) {
+            const el = document.getElementById(`card-${highlightId}`);
+            const container = document.getElementById('score-container');
+            if (el && container) {
+                const elTop = el.offsetTop; 
+                const elBottom = elTop + el.offsetHeight;
+                const cTop = container.scrollTop; 
+                const cBottom = cTop + container.clientHeight;
+                
+                if (elBottom > cBottom - 20 || elTop < cTop + 20) {
+                    // ★修正：今いる場所から大きく離れている（300px以上）場合は一瞬でジャンプ
+                    const isFar = Math.abs(elTop - cTop) > 300;
+                    container.scrollTo({ 
+                        top: elTop - 20, 
+                        behavior: isFar ? 'auto' : 'smooth' 
+                    }); 
+                }
+            }
+        }
+    }, [highlightId]);
+
+// =======================================================
+    // 🎓 チュートリアルの「絶対ズレない」進行エンジン
+    // =======================================================
+    const tutStepRef = useRef(tutorialStep);
+    const tutActiveRef = useRef(isTutorial);
+    const hintTimerRef = useRef(null);
+
+    const resetHintTimer = () => {
+        if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+        // チュートリアル中で、かつステップ3〜8の間だけヒントを出す
+        if (!isTutorial || tutorialStep < 3 || tutorialStep > 8) return;
+
+        hintTimerRef.current = setTimeout(() => {
+            // 👇 ★修正：他の音声（最初の説明など）が喋っている最中なら、空気を読んで今回はヒントを喋らずにタイマーをやり直す！
+            if (window.speechSynthesis.speaking) {
+                resetHintTimer();
+                return;
+            }
+
+            const hints = {
+                3: "画面をトントンと２回、叩いてみてくださいね。",
+                4: "指を右に向かって、シュッと横になぞってみてください。",
+                5: "今度は指を左に向かって、シュッとなぞってみましょう。",
+                6: "指を画面に置いたまま、動かさずにじっとしてみてください。",
+                7: "２本の指を揃えて、横にスライドさせてみてください。",
+                8: "２本の指を揃えて、上下にスライドさせてみてください。"
+            };
+            if (hints[tutorialStep]) speak(hints[tutorialStep], tempo);
+            resetHintTimer(); // 喋った後、再度タイマー開始
+        }, 20000); // 👈 ★修正：被り防止のため、余裕を持って「20秒（20000）」に少し伸ばしました！
+    };
+
+    // チュートリアルのステップが進んだり、カウントが増えたりしたらタイマーリセット
+    useEffect(() => {
+        resetHintTimer();
+        return () => clearTimeout(hintTimerRef.current);
+    }, [tutorialStep, tutorialCount, isTutorial]);
+
+    // 常に最新のステップをメモしておく
+    useEffect(() => {
+        tutStepRef.current = tutorialStep;
+        tutActiveRef.current = isTutorial;
+    }, [tutorialStep, isTutorial]);
+
+    // 絶対に連絡漏れしないクリア判定（ゆったり余韻バージョン！）
+    const checkTutorialClear = (expectedStep, requiredCount) => {
+        if (!tutActiveRef.current || tutStepRef.current !== expectedStep) return;
+        
+        setTutorialCount(prev => {
+            const nextCount = prev + 1;
+            if (nextCount >= requiredCount) {
+                
+                // 1. まずは「クリアです！」と喋らせる
+                speak("クリアです！", tempo);
+                
+                // 👇 ★修正：ここで「1.5秒（1500ミリ秒）」の余韻（待ち時間）を作ってから次へ進む！
+                setTimeout(() => {
+                    if (expectedStep === 8) {
+                        setTutorialStep(9); // 最後にエンディングへ
+                    } 
+                    else {
+                        setTutorialStep(expectedStep + 1); // 次のステップへ
+                    }
+                }, 1500); // 👈 この「1500」を「2000」にすれば2秒待つなど、お好みで調整できます！
+                
+                return 0;
+            }
+            return nextCount;
+        });
+    };
+    // =======================================================
+    // ★タッチ操作の開始（※長押しの真犯人はココでした！）
+    // =======================================================
+    const handleTouchStart = (e) => {
+        if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return; 
+        const t = touchRef.current;
+        t.maxTouches = e.touches.length; t.startX = e.touches[0].clientX; t.startY = e.touches[0].clientY; t.startTime = Date.now(); t.handled = false;
+        
+        resetHintTimer();
+
+        if (t.maxTouches === 1) {
+            t.timer = setTimeout(() => { 
+                t.handled = true; 
+
+                // 👇 ★追加：チュートリアル中、ステップ6の練習以外の時はここで処理を止める！
+                if (isTutorial && tutorialStep !== 6) return;
+
+                playStepAction(currentEvents[currentIndex >= 0 ? currentIndex : 0]); 
+                checkTutorialClear(6, 3); 
+            }, 500); 
+        } else { clearTimeout(t.timer); }
+    };
+
+    // =======================================================
+    // ★指を動かしたとき（長押しキャンセル）
+    // =======================================================
+    const handleTouchMove = (e) => {
+        if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
+        const t = touchRef.current;
+        if (e.touches.length > t.maxTouches) t.maxTouches = e.touches.length;
+        const dx = Math.abs(e.touches[0].clientX - t.startX); const dy = Math.abs(e.touches[0].clientY - t.startY);
+        
+        // 指が10px以上ブレたら「スワイプだ！」と判断して長押しタイマーを止める
+        if (dx > 10 || dy > 10) clearTimeout(t.timer); 
+    };
+    
+
+    // =======================================================
+    // ★タッチ操作とチュートリアル判定の完全版
+    // =======================================================
+    const handleTouchEnd = (e) => {
+        if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
+        const t = touchRef.current; clearTimeout(t.timer);
+        if (t.handled) return;
+
+        const touchEndX = e.changedTouches[0].clientX; const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - t.startX; const deltaY = touchEndY - t.startY;
+        const absDx = Math.abs(deltaX); const absDy = Math.abs(deltaY);
+        const duration = Date.now() - t.startTime;
+
+        // 1. 長押しの判定（ブレ許容 60px）
+        if (absDx < 60 && absDy < 60 && duration > 400) {
+            t.handled = true;
+            if (t.maxTouches === 1) {
+                playStepAction(currentEvents[currentIndex >= 0 ? currentIndex : 0]);
+                checkTutorialClear(6, 3); // 👈 ステップ6（長押し）
+            } else if (t.maxTouches >= 2) {
+                if (playing) stopPlayback();
+                speak("停止しました", tempo);
+            }
+            return;
+        }
+
+        // 2. スワイプの判定
+        if (absDx > 40 && absDx > absDy) {
+            t.handled = true; 
+            if (t.maxTouches === 1) {
+                if (deltaX > 0) {
+                    // 👉 右スワイプ（1音進む）
+                    if (isTutorial && tutorialStep !== 4) return;
+
+                    playStepAction(currentEvents[Math.min(currentEvents.length-1, currentIndex+1)]); 
+                    checkTutorialClear(4, 7); // 👈 ステップ4（右スワイプ）
+                } else {
+                    // 👈 左スワイプ（1音戻る）
+                    if (isTutorial && tutorialStep !== 5) return;
+
+                    playStepAction(currentEvents[Math.max(0, currentIndex-1)]); 
+                    checkTutorialClear(5, 5); // 👈 ステップ5（左スワイプ）
+                }
+            } 
+            else if (t.maxTouches === 2) {
+                if (isTutorial && tutorialStep !== 7) return;
+
+                if (deltaX > 0) {
+                    if (playing) stopPlayback();
+                    setMeasure(m => { 
+                        const currentStep = (m === 0) ? 1 : (blockSize === 'all' ? 1 : blockSize);
+                        const nextM = Math.min(maxMeasure, m + currentStep); 
+                        speakMeasureInfo(nextM); // 👈 超スッキリ！
+                        return nextM; 
+                    });
+                    setHighlightId(null); 
+                } else {
+                    if (playing) stopPlayback();
+                    setMeasure(m => { 
+                        const currentStep = (m === 1) ? 1 : (blockSize === 'all' ? 1 : blockSize);
+                        const prevM = Math.max(0, m - currentStep); 
+                        speakMeasureInfo(prevM); // 👈 超スッキリ！
+                        return prevM; 
+                    }); 
+                    setHighlightId(null); 
+                }
+                checkTutorialClear(7, 2);
+            }
+        } else if (absDy > 40 && absDy > absDx) {
+            t.handled = true;
+            if (t.maxTouches === 2) {
+                if (isTutorial && tutorialStep !== 8) return;
+
+                handleScreenCycle();
+            }
+        }
+        
+        // 3. １本指タップ / ダブルタップの判定
+        else if (absDx < 10 && absDy < 10 && duration < 300 && t.maxTouches === 1) {
+            const documentNow = Date.now();
+            if (documentNow - t.lastTap < 300) { 
+                t.handled = true; t.lastTap = 0;
+                
+                if (isTutorial && tutorialStep !== 3) return;
+
+                // 👇 ★先生のアイデアを具現化した「ゲーム風リトライ＆クリア判定」
+                if (isTutorial && tutorialStep === 3) {
+                    const currentCount = tutorialStateRef.current ? tutorialStateRef.current.count : 0;
+                    
+                    // 🚨 【やり直しルート】
+                    // タップした瞬間に「曲が止まっている」かつ「すでに1回再生ボタンを押している」
+                    // ＝ユーザーが途中で止められず、曲が自然に最後まで終わって自動停止していたケース！
+                    if (!playing && currentCount >= 1) {
+                        window.speechSynthesis.cancel(); // 喋り声を一度リセット
+                        speak("最後まで再生されましたね。もう一度ダブルタップして、今度は途中で止めてみてください。", tempo);
+                        
+                        setTutorialCount(0);      // カウントを0にリセットして
+                        togglePlay();             // もう一度きらきら星を再生！
+                        checkTutorialClear(3, 2); // カウントを「1回目再生中」の状態にセット
+                        return;
+                    }
+                    
+                    // 🎉 【成功（クリア）ルート】
+                    // 曲が流れている最中に、狙い通りダブルタップができたケース！
+                    if (playing) {
+                        stopPlayback(); // 守護神のコードで曲を即座にストップ！
+                        
+                        // 👇 ★修正2：操作モードによって進むステップと案内を分岐させます！
+                        if (controlMode === 'tap') {
+                            speak("ナイスコントロール！途中で止めることができましたね。クリアです！次は一音ずつの移動練習です。画面の右半分をポンと叩くと一音進み、左半分を叩くと一音戻ります。まずは右側を叩いて進んでみてください。", tempo);
+                            setTutorialStep(3.5);   // 📱 タッチ操作の人は新設の3.5へ！
+                        } else {
+                            speak("ナイスコントロール！途中で止めることができましたね。クリアです！", tempo);
+                            setTutorialStep(4);     // 👆 スワイプ操作の人は元のステップ4へ！
+                        }
+                        
+                        setTutorialCount(0);  // カウントを綺麗にしておく
+                        return;
+                    }
+                } // 👈 ★ココ！！！ この閉じカッコ（ } ）が抜けていました！   
+                // 💡 【最初の1回目ルート】まだ何もしてない最初のダブルタップ用
+                togglePlay(); 
+                checkTutorialClear(3, 2); 
+            } else { 
+                t.lastTap = documentNow; 
+            }
+        }
+    };
+
+    // =======================================================
+    // ★画面切り替え
+    // =======================================================
+    const handleScreenCycle = () => {
+        const isSettings = isSettingsOpen;
+        const isScore = !isSettings && (tabletLayout === 'score_only' || mobileView === 'score');
+        const isControl = !isSettings && (tabletLayout === 'control_only' || mobileView === 'control' || tabletLayout === 'split');
+
+        if (isScore) {
+            setTabletLayout('control_only'); setMobileView('control'); 
+            speak("操作画面です。音声読み上げ機能をオンにして操作することをおすすめします。", tempo);
+        } else if (isControl) {
+            setIsSettingsOpen(true); 
+            speak("設定画面です。音声読み上げ機能をオンにして操作することをおすすめします。", tempo);
+        } else {
+            setIsSettingsOpen(false); setTabletLayout('score_only'); setMobileView('score'); 
+            speak("楽譜画面です。音声読み上げ機能はオフにしてください。", tempo);
+        }
+        
+        checkTutorialClear(8, 3); // 👈 ステップ8（2本指上下スワイプ）
+    };
+
+    const getOctaveInfoSpeech = (pStr) => {
+        if (!pStr) return "ちゅうおうのド";
+        const formatted = formatPitchWithMode(pStr, octaveMode, dict);
+        if (octaveMode === "①C4（数字式）" || octaveMode === "②一点ハ（日本式）") return formatted.speech;
+        const m = pStr.match(/([A-G])([#b]*)(-?\d+)/);
+        if (!m) return "ちゅうおうのド";
+        const oct = parseInt(m[3], 10);
+        if (oct === 4) return `ちゅうおうの、${formatted.speech}`;
+        if (oct > 4) return `ちゅうおうから${oct - 4}オクターブたかい、${formatted.speech}`;
+        if (oct < 4) return `ちゅうおうから${4 - oct}オクターブひくい、${formatted.speech}`;
+        return `ちゅうおうの、${formatted.speech}`;
+    };
+
+    const announceSongInfo = async () => {
+        let firstPitchR = null;
+        let firstPitchL = null;
+        for (let ev of enrichedEvents) {
+            if (!firstPitchR && ev.raw_r?.pitches?.[0] && ev.raw_r.pitches[0] !== "REST") firstPitchR = ev.raw_r.pitches[0];
+            if (!firstPitchL && ev.raw_l?.pitches?.[0] && ev.raw_l.pitches[0] !== "REST") firstPitchL = ev.raw_l.pitches[0];
+            if (firstPitchR && firstPitchL) break;
+        }
+        
+        let firstNoteSpeech = "";
+        if (firstPitchL && firstPitchR) {
+            firstNoteSpeech = `ひだりては、${getOctaveInfoSpeech(firstPitchL)}。みぎては、${getOctaveInfoSpeech(firstPitchR)}`;
+        } else if (firstPitchR) {
+            firstNoteSpeech = `みぎては、${getOctaveInfoSpeech(firstPitchR)}`;
+        } else if (firstPitchL) {
+            firstNoteSpeech = `ひだりては、${getOctaveInfoSpeech(firstPitchL)}`;
+        } else {
+            firstNoteSpeech = `ありません`;
+        }
+
+        const keyDetailedSpeechMap = {
+            "0": "ちょうごうなし、ハちょうちょう、または、イたんちょう", "1": "シャープ１つ、トちょうちょう、または、ホたんちょう", "2": "シャープ２つ、ニちょうちょう、または、ロたんちょう",
+            "3": "シャープ３つ、イちょうちょう、または、えいヘたんちょう", "4": "シャープ４つ、ホちょうちょう、または、えいハたんちょう", "5": "シャープ５つ、ロちょうちょう、または、えいトたんちょう",
+            "-1": "フラット１つ、ヘちょうちょう、または、ニたんちょう", "-2": "フラット２つ、へんロちょうちょう、または、トたんちょう", "-3": "フラット３つ、へんホちょうちょう、または、ハたんちょう",
+            "-4": "フラット４つ、へんイちょうちょう、または、ヘたんちょう", "-5": "フラット５つ、へんニちょうちょう、または、へんロたんちょう"
+        };
+        const keySpeech = keyDetailedSpeechMap[headerInfo.keySignature || "0"] || "ちょうごうなし";
+        const timeSigSpeech = (headerInfo.timeSignature || "4/4").split('/').reverse().join('ぶんの') + "びょうし";
+        let tempoSpeech = headerInfo.tempo ? `４ぶおんぷが、${headerInfo.tempo}ビーピーエム` : "していなし";
+        let fullSpeech = `きょくめい、${headerInfo.title || "なし"}。拍子、${timeSigSpeech}。調号、${keySpeech}。テンポ、${tempoSpeech}。さいしょのおとは、${firstNoteSpeech}です。`;
+        await speak(fullSpeech, tempo);
+    };
+    const startPerformance = async () => {
+        unlockAudio(); playingRef.current = true; setPlaying(true);
+        let startM = measure;
+        if (startM === 0) { await announceSongInfo(); startM = 1; setMeasure(1); }
+        if (!playingRef.current) return;
+
+        if (blockSize === 'all') setActiveMeasure(startM); else setActiveMeasure(`${startM} ～ ${Math.min(maxMeasure, startM + blockSize - 1)}`);
+        if (blockSize === 1) { const mNum = enrichedEvents.find(e => e.m === startM)?.originalM || startM; await speak(`${mNum}しょうせつめ`, tempo); }
+        if (!playingRef.current) return;
+
+        const timeSig = headerInfo.timeSignature || "4/4"; const parts = timeSig.split('/').map(Number);
+        const beatsPerMeasure = parts[0] || 4; const beatValue = parts[1] || 4; 
+        const quarterNotesPerBeat = 4 / beatValue; const expectedMeasureLengthQ = beatsPerMeasure * quarterNotesPerBeat;
+
+        let currentQ = 0; const mStarts = {}; const mLengths = {};
+        for (let m = 1; m <= maxMeasure; m++) {
+            mStarts[m] = currentQ;
+            const eventsInM = enrichedEvents.filter(e => e.m === m);
+            let maxQ = 0;
+            eventsInM.forEach(ev => {
+                const durR = ev.raw_r ? getDurationQ(ev.raw_r) : 0;
+                const durL = ev.raw_l ? getDurationQ(ev.raw_l) : 0;
+                const endQ = (ev.b - 1) + Math.max(durR, durL);
+                if (endQ > maxQ) maxQ = endQ;
+            });
+            let length = expectedMeasureLengthQ;
+            if (maxQ > 0 && maxQ < expectedMeasureLengthQ - 0.01) { length = maxQ; }
+            mLengths[m] = length; currentQ += length;
+        }
+        mStarts[maxMeasure + 1] = currentQ; 
+
+        let parsedTempo = parseInt(headerInfo.tempo); if (isNaN(parsedTempo)) parsedTempo = 80;
+        const currentBpm = parsedTempo * (tempo / 100);
+        const secPerQ = 60 / currentBpm; const secPerBeat = secPerQ * quarterNotesPerBeat; 
+
+        const blockStartQ = mStarts[startM] || 0;
+        
+        // --- ★修正箇所：アウフタクト（弱起）対応 ---
+        // 先頭小節の足りない拍数を計算して、カウントインに追加します
+        const startActiveBeats = Math.max(1, Math.round((mLengths[startM] || expectedMeasureLengthQ) / quarterNotesPerBeat));
+        const missingBeats = Math.max(0, beatsPerMeasure - startActiveBeats);
+        const countInBeats = (useCountIn ? beatsPerMeasure : 0) + missingBeats;
+        const countInDuration = countInBeats * secPerBeat;
+        
+        let startTime = audioCtxRef.current.currentTime + 0.5 + countInDuration;
+
+        for (let i = 0; i < countInBeats; i++) {
+            // カウントイン中の「強・弱」も音楽的に正しい位置になるよう逆算します
+            let absBeat = missingBeats - countInBeats + i;
+            let isStrong = (absBeat % beatsPerMeasure === 0);
+            let time = startTime - (countInBeats - i) * secPerBeat;
+            if (useCountIn || useMetronome) {
+                playMetronome(audioCtxRef.current, isStrong, time, activeOscs.current);
+            }
+        }
+        // ------------------------------------------
+
+        let localEndM = blockSize === 'all' ? maxMeasure : Math.min(maxMeasure, startM + blockSize - 1);
+        const playEvents = enrichedEvents.filter(e => e.m >= startM && e.m <= localEndM);
+        
+        // --- ★追加：カウント開始前に、最初の音符へ一瞬でジャンプしてスタンバイ ---
+        if (playEvents.length > 0) {
+            setHighlightId(playEvents[0].uniqueId);
+        }
+        // ------------------------------------------
+
+        let nextMetroM = startM; let nextMetroB = 0; let nextEventIdx = 0;
+        const blockEndQ = mStarts[localEndM + 1] || (mStarts[localEndM] + mLengths[localEndM]);
+        const endTime = startTime + ((blockEndQ - blockStartQ) * secPerQ);
+
+        while (audioCtxRef.current.currentTime < endTime) {
+            if (!playingRef.current) break;
+            const now = audioCtxRef.current.currentTime; const lookahead = now + 1.0; 
+
+            while (nextMetroM <= localEndM) {
+                const mBaseQ = mStarts[nextMetroM]; const beatQ = mBaseQ + (nextMetroB * quarterNotesPerBeat);
+                const time = startTime + (beatQ - blockStartQ) * secPerQ;
+                const activeBeats = Math.max(1, Math.round(mLengths[nextMetroM] / quarterNotesPerBeat));
+                
+                // --- ★修正箇所：小節途中のメトロノームも強弱を正しく判定 ---
+                const musicalBeatIdx = (beatsPerMeasure - activeBeats) + nextMetroB;
+                const isStrong = (musicalBeatIdx % beatsPerMeasure === 0);
+
+                if (time < lookahead) {
+                    if (useMetronome) playMetronome(audioCtxRef.current, isStrong, time, activeOscs.current);
+                    nextMetroB++;
+                    if (nextMetroB >= activeBeats) { nextMetroB = 0; nextMetroM++; }
+                } else { break; }
+            }
+
+            while (nextEventIdx < playEvents.length) {
+                const ev = playEvents[nextEventIdx];
+                const noteTime = startTime + (ev.absoluteQ - blockStartQ) * secPerQ;
+                
+                if (noteTime < lookahead) {
+                    // --- ★修正：計算結果から150ms引くことで、音より少し早く光らせます ---
+                    const waitMs = Math.max(0, (noteTime - now) * 1000 - 150);
+                    const tId = setTimeout(() => {
+                        if (playingRef.current) { setActiveMeasure(prev => prev !== ev.originalM ? ev.originalM : prev); setHighlightId(ev.uniqueId); }
+                    }, waitMs);
+                    timeoutIds.current.push(tId);
+
+                    if (part === "右手" || part === "両手") playNotesWithInstrument(ev.raw_r, noteTime, 2.0, false);
+                    if (part === "左手" || part === "両手") playNotesWithInstrument(ev.raw_l, noteTime, 3.5, true); 
+                    nextEventIdx++;
+                } else { break; }
+            }
+            await new Promise(r => setTimeout(r, 100)); 
+        }
+        if (playingRef.current) stopPlayback();
+    };
+    const startReading = async () => {
+        unlockAudio(); playingRef.current = true; setPlaying(true);
+        let startM = measure;
+        if (startM === 0) { await announceSongInfo(); startM = 1; setMeasure(1); }
+        if (!playingRef.current) return;
+        
+        let currentMeasureAnnounced = -1;
+        let localEndM = blockSize === 'all' ? maxMeasure : Math.min(maxMeasure, startM + blockSize - 1);
+        const playEvents = enrichedEvents.filter(e => e.m >= startM && e.m <= localEndM);
+
+        for (let i = 0; i < playEvents.length; i++) {
+            if (!playingRef.current) break;
+            const ev = playEvents[i];
+            if (ev.originalM !== currentMeasureAnnounced) {
+                await speak(`${ev.originalM}しょうせつめ`, tempo);
+                currentMeasureAnnounced = ev.originalM; setActiveMeasure(ev.originalM); 
+            }
+            if (!playingRef.current) break;
+            await playStepAction(ev, true);
+        }
+        if (playingRef.current) stopPlayback();
+    };
+
+    const playStepAction = async (ev, shouldSpeak = true) => {
+        if (playing) stopPlayback(); unlockAudio(); if (!ev) return;
+        setHighlightId(ev.uniqueId); setActiveMeasure(ev.originalM); 
+        
+        const infoR = parseMusicData(ev.raw_r, ev.relR, octaveMode, dict, playMode);
+        const infoL = parseMusicData(ev.raw_l, ev.relL, octaveMode, dict, playMode);
+        const startDirs = (ev.allDirs || []).filter(d => ["repeat_start", "ending_1", "ending_2", "1.", "2.", "Coda", "Segno"].includes(d));
+        const endDirs = (ev.allDirs || []).filter(d => ["repeat_end", "D.C.", "D.S.", "Fine", "to Coda"].includes(d));
+
+        const fallbackSpeechMap = {
+            "repeat_start": "リピートかいし", "repeat_end": "リピートでもどる", "ending_1": "1かっこ", "1.": "1かっこ", "ending_2": "2かっこ", "2.": "2かっこ",
+            "Segno": "セーニョ", "D.S.": "ダルセーニョ", "D.C.": "ダ・カーポ", "To Coda": "トゥ・コーダ", "to Coda": "トゥ・コーダ", "Coda": "コーダ", "Fine": "フィーネ"
+        };
+
+        if (playMode === "③演奏") {
+            const now = audioCtxRef.current.currentTime + 0.05;
+            if (part === "右手" || part === "両手") playNotesWithInstrument(ev.raw_r, now, 2.0, false);
+            if (part === "左手" || part === "両手") playNotesWithInstrument(ev.raw_l, now, 3.5, true); 
+            await new Promise(r => setTimeout(r, 400));
+        } else {
+            if (shouldSpeak) {
+                for (let dir of startDirs) { 
+                    const speechTxt = (dict.DIRECTIONS && dict.DIRECTIONS[dir] && dict.DIRECTIONS[dir].speech) ? dict.DIRECTIONS[dir].speech : fallbackSpeechMap[dir];
+                    if (speechTxt) await speak(speechTxt, tempo);
+                }
+                let txt = "";
+                if (part === "右手") txt = infoR.speech; else if (part === "左手") txt = infoL.speech; else txt = `左、${infoL.speech}。右、${infoR.speech}`;
+                await speak(txt, tempo);
+                for (let dir of endDirs) { 
+                    const speechTxt = (dict.DIRECTIONS && dict.DIRECTIONS[dir] && dict.DIRECTIONS[dir].speech) ? dict.DIRECTIONS[dir].speech : fallbackSpeechMap[dir];
+                    if (speechTxt) await speak(speechTxt, tempo);
+                }
+            }
+            const now = audioCtxRef.current.currentTime + 0.05;
+            if (part === "右手" || part === "両手") playNotesWithInstrument(ev.raw_r, now, 2.0, false);
+            if (part === "左手" || part === "両手") playNotesWithInstrument(ev.raw_l, now, 3.5, true); 
+        }
+    };
+
+    const togglePlay = () => { if (playing) { stopPlayback(); return; } if (playMode === "③演奏") startPerformance(); else startReading(); };
+
+    // --- ★完成版：見えない大ボタン（ダブルタップとケンカしない賢い版） ---
+    const handleScoreClick = (e) => {
+        if (!tapMode) return;
+        
+        // どこをタップしたか取得
+        const clickX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+        const screenWidth = window.innerWidth;
+
+        // もし250ミリ秒以内に2回目のタップ（ダブルタップ）が来たらキャンセル！
+        if (clickTimerRef.current) {
+            clearTimeout(clickTimerRef.current);
+            clickTimerRef.current = null;
+            return; 
+        }
+
+        // 1回目のタップが来たら、250ミリ秒だけ待ってから音符を移動する
+        clickTimerRef.current = setTimeout(() => {
+            if (clickX > screenWidth / 2) {
+                // 画面の右半分をタップ：1音進む
+                playStepAction(currentEvents[Math.min(currentEvents.length-1, currentIndex+1)]);
+            } else {
+                // 画面の左半分をタップ：1音戻る
+                playStepAction(currentEvents[Math.max(0, currentIndex-1)]);
+            }
+            clickTimerRef.current = null;
+        }, 250); 
+    };
+    const handleBlockSizeChange = (val) => {
+        if (playing) stopPlayback(); setBlockSize(val === 'all' ? 'all' : Number(val));
+        if (val === 'all') { setMeasure(0); speak("きょくじょうほう", tempo); }
+    };
+// --- ★追加：再生停止中に小節（ブロック）を選んだら、即座にその場所へスタンバイする ---
+    useEffect(() => {
+        // 再生中でない時に、新しい小節の最初の音符を探してハイライトを当てる
+        if (!playing && enrichedEvents && enrichedEvents.length > 0) {
+            const firstEvent = enrichedEvents.find(e => e.m >= measure);
+            if (firstEvent) {
+                setHighlightId(firstEvent.uniqueId);
+            }
+        }
+    }, [measure, playing, enrichedEvents]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const key = e.key.toLowerCase(); const step = blockSize === 'all' ? 1 : blockSize; 
+            
+            // 👇 ★修正：Sキー（設定の開閉）
+            if (key === 's') { 
+                e.preventDefault(); 
+                setIsSettingsOpen(prev => {
+                    const nextState = !prev;
+                    if (nextState) speak("設定画面です。");
+                    else speak("楽譜画面です。");
+                    return nextState;
+                }); 
+                return; 
+            }
+            
+            // 👇 ★修正：Gキー（ガイドの開閉）
+            if (key === 'g') { 
+                e.preventDefault(); 
+                setShowGuide(prev => {
+                    const nextState = !prev;
+                    if (nextState) speak("ガイドを開きました。");
+                    else speak("楽譜画面に戻りました。");
+                    return nextState;
+                }); 
+                return; 
+            }
+            
+            // 👇 ★修正：Mキー（レイアウト・画面切替）
+            if (key === 'm') { 
+                e.preventDefault(); 
+                if (window.innerWidth >= 768) { 
+                    setTabletLayout(prev => {
+                        const nextState = prev === 'split' ? 'score_only' : (prev === 'score_only' ? 'control_only' : 'split');
+                        if (nextState === 'split') speak("楽譜と操作画面の、分割表示です。");
+                        else if (nextState === 'control_only') speak("操作画面です。");
+                        else speak("楽譜画面です。");
+                        return nextState;
+                    });
+                } else { 
+                    setMobileView(prev => {
+                        const nextState = prev === 'score' ? 'control' : 'score';
+                        if (nextState === 'control') speak("操作画面です。");
+                        else speak("楽譜画面です。");
+                        return nextState;
+                    });
+                }
+                return; 
+            }
+            if (e.code === 'Space') { e.preventDefault(); togglePlay(); return; }
+            if (e.key === 'Backspace') { e.preventDefault(); if(currentIndex >= 0) playStepAction(currentEvents[currentIndex]); return; }
+            if (key === 'l' || key === 'r' || key === 'b') {
+                if (playing) stopPlayback();
+                if (key === 'l') { setPart("左手"); announce(setAnnounceText, "左手のみに設定"); }
+                if (key === 'r') { setPart("右手"); announce(setAnnounceText, "右手のみに設定"); }
+                if (key === 'b') { setPart("両手"); announce(setAnnounceText, "両手に設定"); }
+                return;
+            }
+            if (key === '+' || key === ';') { setTempo(prev => Math.min(150, prev + 5)); return; }
+            if (key === '-' || key === '_') { setTempo(prev => Math.max(50, prev - 5)); return; }
+            if (e.key === 'ArrowUp') { e.preventDefault(); playStepAction(currentEvents[Math.max(0, currentIndex - 1)]); return; }
+            if (e.key === 'ArrowDown') { e.preventDefault(); playStepAction(currentEvents[Math.min(currentEvents.length - 1, currentIndex + 1)]); return; }
+            if (e.key === 'ArrowLeft') { 
+                e.preventDefault(); if (playing) stopPlayback();
+                setMeasure(m => { 
+                    const currentStep = (m === 1) ? 1 : (blockSize === 'all' ? 1 : blockSize);
+                    const prevM = Math.max(0, m - currentStep); 
+                    speakMeasureInfo(prevM); // 👈 超スッキリ！
+                    return prevM; 
+                });
+                setHighlightId(null); return; 
+            }
+            if (e.key === 'ArrowRight') { 
+                e.preventDefault(); if (playing) stopPlayback();
+                setMeasure(m => { 
+                    const currentStep = (m === 0) ? 1 : (blockSize === 'all' ? 1 : blockSize);
+                    const nextM = Math.min(maxMeasure, m + currentStep); 
+                    speakMeasureInfo(nextM); // 👈 超スッキリ！
+                    return nextM; 
+                });
+                setHighlightId(null); return; 
+            }
+            if (e.key >= '0' && e.key <= '9') {
+                clearTimeout(jumpTimerRef.current); const newJump = jumpInput + e.key; setJumpInput(newJump);
+                jumpTimerRef.current = setTimeout(() => {
+                    const targetOriginal = parseInt(newJump);
+                    if (targetOriginal === 0) { 
+                        if (playing) stopPlayback(); setMeasure(0); setHighlightId(null); 
+                        speakMeasureInfo(0);
+                    } else {
+                        const targetEvent = enrichedEvents.find(ev => ev.originalM === targetOriginal);
+                        if (targetEvent) { 
+                            if (playing) stopPlayback(); setMeasure(targetEvent.m); setHighlightId(null); 
+                            speakMeasureInfo(targetEvent.m);
+                        }
+                    }
+                    setJumpInput("");
+                }, 800);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [playing, currentIndex, measure, currentEvents, jumpInput, tempo, playMode, blockSize, maxMeasure, mobileView, tabletLayout]);
+
+    const keyDispDict = {
+        "0": "調号なし (ハ長調 / イ短調)", "1": "♯×1 (ト長調 / ホ短調)", "2": "♯×2 (ニ長調 / ロ短調)", "3": "♯×3 (イ長調 / 嬰ヘ短調)", "4": "♯×4 (ホ長調 / 嬰ハ短調)", "5": "♯×5 (ロ長調 / 嬰ト短調)",
+        "-1": "♭×1 (ヘ長調 / ニ短調)", "-2": "♭×2 (変ロ長調 / ト短調)", "-3": "♭×3 (変ホ長調 / ハ短調)", "-4": "♭×4 (変イ長調 / ヘ短調)", "-5": "♭×5 (変ニ長調 / 変ロ短調)"
+    };
+
+    const getOctaveInfo = (pStr) => {
+        if (!pStr) return { disp: "中央のド" };
+        const formatted = formatPitchWithMode(pStr, octaveMode, dict);
+        if (octaveMode === "①C4（数字式）" || octaveMode === "②一点ハ（日本式）") return { disp: formatted.disp };
+        const m = pStr.match(/([A-G])([#b]*)(-?\d+)/);
+        if (!m) return { disp: "中央のド" };
+        const oct = parseInt(m[3], 10);
+        if (oct === 4) return { disp: `中央の ${formatted.disp}` };
+        if (oct > 4) return { disp: `中央から${oct - 4}オクターブ高い ${formatted.disp}` };
+        if (oct < 4) return { disp: `中央から${4 - oct}オクターブ低い ${formatted.disp}` };
+        return { disp: `中央の ${formatted.disp}` };
+    };
+
+    const firstPitchDispText = useMemo(() => {
+        let firstPitchR = null;
+        let firstPitchL = null;
+        for (let ev of enrichedEvents) {
+            if (!firstPitchR && ev.raw_r?.pitches?.[0] && ev.raw_r.pitches[0] !== "REST") firstPitchR = ev.raw_r.pitches[0];
+            if (!firstPitchL && ev.raw_l?.pitches?.[0] && ev.raw_l.pitches[0] !== "REST") firstPitchL = ev.raw_l.pitches[0];
+            if (firstPitchR && firstPitchL) break;
+        }
+        
+        let texts = [];
+        if (firstPitchL) texts.push(`左手: ${getOctaveInfo(firstPitchL).disp}`);
+        if (firstPitchR) texts.push(`右手: ${getOctaveInfo(firstPitchR).disp}`);
+        return texts.length > 0 ? texts.join(" / ") : "なし";
+    }, [enrichedEvents, octaveMode]);
+    const extraControlsJSX = (
+        <>
+            <fieldset className="border border-slate-600 p-2 rounded-xl bg-slate-700/30 shrink-0">
+                <legend className="text-[10px] px-2 font-bold text-slate-300">パート</legend>
+                <div className="flex gap-2">
+                    {['左手','両手','右手'].map(p => (
+                        <button key={p} onClick={()=>{if(playing) stopPlayback(); setPart(p); announce(setAnnounceText, `${p}に設定`);}} className={`flex-1 py-2 rounded-lg text-sm font-bold relative ${part===p?'bg-blue-600 shadow-md border-b-2 border-blue-800':'bg-slate-700'}`}>
+                            {p} <span className="key-guide">{p==="左手"?'L':(p==="右手"?'R':'B')}</span>
+                        </button>
+                    ))}
+                </div>
+            </fieldset>
+            <div className="px-2 shrink-0">
+                <div className="flex justify-between items-center text-[10px] mb-1 font-bold text-slate-400">
+                    <div>再生スピード <span className="key-guide-inline">+/-</span></div><span className="text-yellow-400 text-xs">{tempo}%</span>
+                </div>
+                <input type="range" className="w-full" min="50" max="150" step="5" value={tempo} onChange={e=>setTempo(Number(e.target.value))} />
+            </div>
+        </>
+    );
+
+    const scoreSectionClass = `layout-transition flex-col bg-white relative shadow-inner overflow-hidden ${mobileView === 'control' ? 'hidden md:flex' : 'flex'} ${tabletLayout === 'control_only' ? 'md:hidden' : (tabletLayout === 'score_only' ? 'md:w-full' : 'md:w-[60%] w-full')}`;
+    const controlSectionClass = `layout-transition shrink-0 flex-col bg-slate-800 p-3 md:p-3 gap-3 md:gap-3 border-t md:border-t-0 md:border-l border-slate-700 h-[100dvh] md:h-full overflow-y-auto pb-[env(safe-area-inset-bottom,12px)] md:pb-3 ${mobileView === 'score' ? 'hidden md:flex' : 'flex'} ${tabletLayout === 'score_only' ? 'md:hidden' : (tabletLayout === 'control_only' ? 'md:w-full w-full' : 'md:w-[40%] w-full')}`;
+
+    return (
+        <div 
+            className={`flex h-[100dvh] w-full overflow-hidden select-none [-webkit-touch-callout:none] ${!showShortcuts ? 'hide-shortcuts' : ''}`}
+            onContextMenu={(e) => e.preventDefault()}
+        >          
+        {/* ================================================= */}
+        {/* ★チュートリアル画面（完全版） */}
+        {/* ================================================= */}
+        {isTutorial && (
+            <div className={`absolute inset-0 z-[100] flex flex-col items-center text-center transition-all ${tutorialStep < 3 ? 'bg-slate-900 justify-center' : 'justify-start pointer-events-none'}`}>
+                
+                {/* 👇 音声サポートスイッチ */}
+                {tutorialStep < 3 && (
+                    <div className="absolute top-4 right-4 z-[200] flex items-center gap-2 pointer-events-auto bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-full border border-slate-600 shadow-lg select-none">
+                        <span className="text-[11px] font-bold text-slate-300 tracking-wider">音声サポート</span>
+                        <button
+                            onClick={() => {
+                                const nextState = !isVoiceEnabled;
+                                setIsVoiceEnabled(nextState);
+                                window.speechSynthesis.cancel();
+                                if (nextState) speak("音声サポートをオンにしました。");
+                            }}
+                            className={`text-[11px] font-black px-2.5 py-0.5 rounded-full transition-all ${isVoiceEnabled ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-600 text-slate-400'}`}
+                        >
+                            {isVoiceEnabled ? 'ON' : 'OFF'}
+                        </button>
+                    </div>
+                )}
+
+                {/* 👇 ステップ0 */}
+                {tutorialStep === 0 && (
+                    <div className="flex flex-col w-full h-full animate-fade-in pointer-events-auto relative">
+                        <div 
+                            onClick={() => {
+                                if (!isVoiceEnabled) return;
+                                window.speechSynthesis.cancel();
+                                const msg = new SpeechSynthesisUtterance("ご利用端末をお選びください。");
+                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                            }}
+                            aria-hidden="true"
+                            className="absolute top-0 left-0 w-full h-[60%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                        />
+                        <div className="w-full flex-1 flex flex-col items-center justify-center px-6 relative z-10 pointer-events-none">
+                            <div className="w-full max-w-sm flex flex-col items-center pointer-events-auto">
+                                <div className="flex justify-start mb-6 w-full">
+                                    <button onClick={(e) => { e.stopPropagation(); handleBackToTop(); }} className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all">
+                                        🏠 ウェルカム画面に戻る
+                                    </button>
+                                </div>
+                                <div className="flex justify-center items-center mb-6 w-full" aria-hidden="true">
+                                    <div className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans">
+                                        🔊 音声案内を聞く
+                                    </div>
+                                </div>
+                                <h2 className="text-[1.4rem] font-bold text-white text-center">ご利用端末をお選びください</h2>
+                            </div>
+                        </div>
+                        <div className="w-full pb-12 px-6 flex flex-col items-center relative z-10">
+                            <div className="w-full max-w-sm flex flex-col gap-4">
+                                {['smartphone:📱 スマートフォン', 'tablet:📱 タブレット', 'pc:💻 パソコン'].map(item => {
+                                    const [val, label] = item.split(':');
+                                    return (
+                                        <button key={val} onClick={() => { setDeviceType(val); setTutorialStep(1); }} className="bg-[#1e40af] text-white text-[1.2rem] font-bold py-5 px-6 w-full rounded-xl border-none shadow-[0_4px_10px_rgba(37,99,235,0.4)] active:translate-y-1 hover:bg-[#2563eb] transition-all flex justify-center items-center">
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 👇 ステップ1 */}
+                {tutorialStep === 1 && (
+                    <div className="flex flex-col w-full h-full animate-fade-in pointer-events-auto relative">
+                        <div 
+                            onClick={() => {
+                                if (!isVoiceEnabled) return;
+                                window.speechSynthesis.cancel();
+                                const msg = new SpeechSynthesisUtterance("練習したい操作方法をお選びください。");
+                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                            }}
+                            aria-hidden="true"
+                            className="absolute top-0 left-0 w-full h-[60%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                        />
+                        <div className="w-full flex-1 flex flex-col items-center justify-center px-6 relative z-10 pointer-events-none">
+                            <div className="w-full max-w-sm flex flex-col items-center pointer-events-auto">
+                                <div className="flex justify-start mb-6 w-full">
+                                    <button onClick={(e) => { e.stopPropagation(); setTutorialStep(0); }} className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all">
+                                        🔙 端末選択に戻る
+                                    </button>
+                                </div>
+                                <div className="flex justify-center items-center mb-6 w-full" aria-hidden="true">
+                                    <div className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans">
+                                        🔊 音声案内を聞く
+                                    </div>
+                                </div>
+                                <h2 className="text-[1.4rem] font-bold text-white text-center">操作方法の選択</h2>
+                            </div>
+                        </div>
+                        <div className="w-full pb-12 px-6 flex flex-col items-center relative z-10">
+                            <div className="w-full max-w-sm flex flex-col gap-4">
+                                <button onClick={() => { setControlMode('gesture'); setTapMode(false); setTutorialStep(2); }} className="p-4 bg-[#1d4ed8] rounded-xl border-b-4 border-[#1e3a8a] active:translate-y-1 text-left shadow-lg w-full transition-transform">
+                                    <div className="text-[1.1rem] font-bold text-white mb-1">👆 スワイプ（なぞる）</div>
+                                    <div className="text-[0.8rem] text-blue-200 font-bold">画面をなぞって進みます。VoiceOverオフ推奨</div>
+                                </button>
+                                <button onClick={() => { setControlMode('tap'); setTapMode(true); setTutorialStep(2); }} className="p-4 bg-[#db2777] rounded-xl border-b-4 border-[#9d174d] active:translate-y-1 text-left shadow-lg w-full transition-transform">
+                                    <div className="text-[1.1rem] font-bold text-white mb-1">📱 画面の左右をタップ</div>
+                                    <div className="text-[0.8rem] text-pink-200 font-bold">見えない大ボタンを押します。VoiceOverオフ推奨</div>
+                                </button>
+                                <button onClick={() => { setControlMode('button'); setTapMode(false); handleBackToTop(); }} className="p-4 bg-[#334155] rounded-xl border-b-4 border-[#0f172a] active:translate-y-1 text-left shadow-lg w-full transition-transform">
+                                    <div className="text-[1.1rem] font-bold text-white mb-1">🎛️ パネルのボタン</div>
+                                    <div className="text-[0.8rem] text-slate-300 font-bold">VoiceOverオンのままでOK（最初の画面に戻ります）</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 👇 ステップ2 */}
+                {tutorialStep === 2 && (
+                    <div className="flex flex-col w-full h-full animate-fade-in pointer-events-auto relative">
+                        <div 
+                            onClick={() => {
+                                if (!isVoiceEnabled) return;
+                                window.speechSynthesis.cancel();
+                                const msg = new SpeechSynthesisUtterance("ボイスオーバーをご利用の方へ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。");
+                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                            }}
+                            aria-hidden="true"
+                            className="absolute top-0 left-0 w-full h-[50%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                        />
+                        <div className="w-full flex-1 flex flex-col items-center justify-center px-6 relative z-10 pointer-events-none">
+                            <div className="w-full max-w-sm flex flex-col items-center pointer-events-auto">
+                                <div className="flex justify-start mb-6 w-full">
+                                    <button onClick={(e) => { e.stopPropagation(); setTutorialStep(1); }} className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all">
+                                        🔙 操作選択に戻る
+                                    </button>
+                                </div>
+                                <div className="flex justify-center items-center w-full" aria-hidden="true">
+                                    <div className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans">
+                                        🔊 音声案内を聞く
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="w-full h-full pb-8 px-6 flex flex-col items-center flex-1 relative z-10">
+                            <button 
+                                onClick={() => { 
+                                    if (controlMode === 'tap') {
+                                        setTutorialStep(2.5); 
+                                        speak("次に、設定画面で画面タップ操作を有効にします。画面中央を1回タップして案内を聴いてください。");
+                                    } else {
+                                        setTutorialStep(3); 
+                                        speak("設定しました。まずは再生の練習です。"); 
+                                    }
+                                }} 
+                                className="max-w-md space-y-6 w-full text-left"
+                            >
+                                <h2 className="text-[1.4rem] font-bold text-yellow-400 text-center">VoiceOverをご利用の方へ</h2>
+                                <p className="text-[1.1rem] leading-relaxed font-bold text-slate-200 text-center">ここから先の練習画面は、<br/>独自の音声ナビゲーションを使用します。</p>
+                                <div className="bg-slate-800 p-5 rounded-xl border border-slate-600 shadow-lg">
+                                    <p className="text-[0.95rem] font-bold leading-relaxed text-slate-300 text-center">
+                                        より快適に操作していただくため、<br/>
+                                        <span className="text-white border-b-2 border-yellow-400">ここでVoiceOverをオフにしてから</span><br/>
+                                        この枠の中を1回タップしてください。
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 👇 ステップ2.5 */}
+                {tutorialStep === 2.5 && (
+                    <div className="absolute inset-0 z-[100] flex flex-col items-center justify-between p-6 pointer-events-none animate-fade-in bg-black/40">
+                        <div className="w-full max-w-sm bg-slate-900/95 border-2 border-green-500 p-4 rounded-xl shadow-2xl mt-12 pointer-events-auto flex flex-col items-center">
+                            <h2 className="text-[1.2rem] font-bold text-green-400 mb-2">① 設定を変更しましょう</h2>
+                            <p className="text-[0.9rem] font-bold text-slate-200 leading-relaxed text-center">
+                                右上の<span className="text-green-400">「設定」</span>ボタンを押し、<br/>
+                                メニューの一番下にある<br/>
+                                <span className="text-pink-400">「👆 画面タップ操作」をON</span><br/>
+                                に変更してください！
+                            </p>
+                        </div>
+                        <div className="w-full max-w-sm bg-slate-900/95 border-2 border-blue-500 p-4 rounded-xl shadow-2xl mb-16 pointer-events-auto flex flex-col items-center gap-3">
+                            <p className="text-[0.85rem] font-bold text-slate-300 text-center">
+                                💡 設定画面の一番下が「ON」になったら、<br/>下のボタンを押して次に進みます。
+                            </p>
+                            <button 
+                                onClick={() => { 
+                                    setTutorialStep(3); 
+                                    setTapMode(true);
+                                    speak("設定を確認しました。ステップ３、再生と停止の練習です。画面の真ん中にある、大きな再生ボタンを押してください。"); 
+                                }} 
+                                className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-md active:translate-y-0.5 transition-all text-center text-sm"
+                            >
+                                👍 設定できたので再生の練習へ進む
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 👇 ステップ3〜8 */}
+                {tutorialStep >= 3 && tutorialStep <= 8 && (
+                    <>
+                        <div 
+                            onClick={() => {
+                                window.speechSynthesis.cancel();
+                                const tutorialSpeeches = {
+                                    3: "画面をトントンと2回タップして、きらきら星を聞いてみましょう。準備ができたら、もう一度2回タップして止めてください。強制停止は、2本指で長押しです。",
+                                    4: "次は、自分のペースで１音ずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
+                                    5: "素晴らしい！次は1つ前の音に戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
+                                    6: "バッチリです！今の音をもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押しして音を確認できたらクリアです。",
+                                    7: "お見事です！次は小節の移動です。2本指で、画面を左右にスワイプすると小節を移動します。2回スワイプしてみましょう。",
+                                    8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。"
+                                };
+                                const msg = new SpeechSynthesisUtterance(tutorialSpeeches[tutorialStep]);
+                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                            }}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onTouchMove={(e) => e.stopPropagation()}
+                            onTouchEnd={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="relative w-full pointer-events-auto pt-4 pb-8 px-6 flex flex-col items-center z-50 cursor-pointer active:opacity-70 transition-opacity"
+                        >
+                            <div 
+                                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md -z-10 pointer-events-none"
+                                style={{ WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)', maskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)' }}
+                            ></div>
+
+                            <div className="w-full max-w-sm flex flex-col gap-3">
+                                <div className="flex justify-between items-center w-full">
+                                    <h3 className="text-yellow-400 font-bold text-sm drop-shadow-md">🎓 練習モード（ステップ {tutorialStep - 2}/6）</h3>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleBackToTop(); }} 
+                                        className="text-xs bg-slate-700/80 px-3 py-1.5 rounded-lg text-slate-300 font-bold active:scale-95 border border-slate-500 transition-all hover:bg-slate-600"
+                                    >
+                                        やめる ✕
+                                    </button>
+                                </div>
+                                <div className="w-full">
+                                    <div className="bg-[#facc15] text-[#422006] text-[16px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center">
+                                        🔊 音声案内をもう一度聞く
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center gap-4 w-full">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); setTutorialStep(prev => Math.max(2, prev - 1)); }} 
+                                        className="flex-1 bg-[rgba(255,255,255,0.15)] text-slate-200 text-[14px] font-bold border border-slate-400/50 rounded-xl py-2 px-3 active:bg-slate-700 transition-all shadow-md"
+                                    >
+                                        🔙 前のステップ
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); if (tutorialStep === 8) { setTutorialStep(9); } else { setTutorialStep(prev => Math.min(8, prev + 1)); } }} 
+                                        className="flex-1 bg-[rgba(250,204,21,0.2)] text-[#facc15] text-[14px] font-bold border border-[#facc15]/70 rounded-xl py-2 px-3 active:bg-[#facc15] active:text-[#0f172a] transition-all shadow-md"
+                                    >
+                                        次のステップ 🔜
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 w-full p-4 flex flex-col pointer-events-none z-40 relative -mt-2">
+                                <div className="flex-1 w-full rounded-2xl border-4 border-dashed border-yellow-400/50 bg-yellow-400/5 flex flex-col items-center pt-4 px-4 relative">
+                                    <div className="bg-slate-800/80 backdrop-blur-sm text-yellow-300 px-5 py-2 rounded-full text-[0.95rem] font-bold tracking-widest mb-4 border border-yellow-400/40 shadow-lg">
+                                        👐 この枠内のどこを触ってもOK！
+                                    </div>
+                                    <div className="w-full max-w-sm mx-auto pointer-events-none">
+                                        {tutorialStep === 3 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-yellow-400 text-center w-full shadow-2xl animate-fade-in">
+                                                <h2 className="text-[2.2rem] font-bold text-white mb-0 tracking-widest">👆👆</h2>
+                                                <h2 className="text-[1.5rem] font-bold text-white mb-4">ダブルタップで</h2>
+                                                <div className="flex justify-center items-center gap-4 mb-2">
+                                                    <span className="text-[1.6rem] font-bold text-green-400">▶ 再生</span>
+                                                    <span className="text-[1.4rem] font-bold text-slate-400">/</span>
+                                                    <span className="text-[1.6rem] font-bold text-red-400">■ 停止</span>
+                                                </div>
+                                                <p className="text-center text-slate-300 font-bold text-[0.85rem] mt-2">💡 曲が最後まで流れたら自動でリトライになります</p>
+                                                <p className="text-center text-pink-400 font-bold text-[0.95rem] mt-3">💡 強制停止は「2本指で画面を長押し」です</p>
+                                            </div>
+                                        )}
+                                        {tutorialStep === 3.5 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-pink-400 text-center w-full shadow-2xl animate-fade-in pointer-events-auto">
+                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">📱 <span className="text-pink-400">右側</span>をタップ(👉)</h2>
+                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-2">次の音へ進む</p>
+                                                <p className="text-[0.85rem] font-bold text-slate-400 mb-4">※左側をタップすると前に戻ります</p>
+                                                <button 
+                                                    onClick={() => { 
+                                                        setTutorialStep(5); 
+                                                        speak("素晴らしいです！これで画面タップ操作の練習はすべて完了です。最後に全体の確認をしましょう。"); 
+                                                    }} 
+                                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl shadow-md active:translate-y-0.5 transition-all border-2 border-green-400 mt-2"
+                                                >
+                                                    ✅ 練習を終わって次へ
+                                                </button>
+                                            </div>
+                                        )}
+                                        {tutorialStep === 4 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-blue-400 text-center w-full shadow-2xl animate-fade-in">
+                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">👆 スワイプ <span className="text-blue-400">右(👉)</span></h2>
+                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-4">次の音へ進む</p>
+                                                <div className="bg-slate-900/80 rounded-xl py-2 border border-slate-700">
+                                                    <span className="text-[1.4rem] font-bold text-yellow-300">クリアまで あと {7 - tutorialCount} 回</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {tutorialStep === 5 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-pink-400 text-center w-full shadow-2xl animate-fade-in">
+                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">👆 スワイプ <span className="text-pink-400">左(👈)</span></h2>
+                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-4">前の音へ戻る</p>
+                                                <div className="bg-slate-900/80 rounded-xl py-2 border border-slate-700">
+                                                    <span className="text-[1.4rem] font-bold text-yellow-300">クリアまで あと {5 - tutorialCount} 回</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {tutorialStep === 6 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-green-400 text-center w-full shadow-2xl animate-fade-in">
+                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">👆 画面を <span className="text-green-400">長押し</span></h2>
+                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-4">今の音をもう一度聞く</p>
+                                                <div className="bg-slate-900/80 rounded-xl py-2 border border-slate-700">
+                                                    <span className="text-[1.4rem] font-bold text-yellow-300">クリアまで あと {3 - tutorialCount} 回</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {tutorialStep === 7 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-purple-400 text-center w-full shadow-2xl animate-fade-in">
+                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">✌️ ２本指で <span className="text-purple-400">横(↔️)</span></h2>
+                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-4">小節を移動する</p>
+                                                <div className="bg-slate-900/80 rounded-xl py-2 border border-slate-700">
+                                                    <span className="text-[1.4rem] font-bold text-yellow-300">クリアまで あと {2 - tutorialCount} 回</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {tutorialStep === 8 && (
+                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-orange-400 text-center w-full shadow-2xl animate-fade-in">
+                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">✌️ ２本指で <span className="text-orange-400">上下(↕️)</span></h2>
+                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-4">画面を切り替える</p>
+                                                <div className="bg-slate-900/80 rounded-xl py-2 border border-slate-700">
+                                                    <span className="text-[1.4rem] font-bold text-yellow-300">クリアまで あと {3 - tutorialCount} 回</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* 👇 ステップ9 */}
+                {tutorialStep === 9 && (
+                    <div className="flex flex-col w-full h-full justify-center px-6 animate-fade-in pointer-events-auto">
+                        <div className="bg-slate-800/95 p-8 rounded-3xl border-4 border-yellow-400 shadow-2xl text-center w-full max-w-sm mx-auto">
+                            <h2 className="text-[2.2rem] font-black text-yellow-400 mb-4 drop-shadow-md">🎉 クリア！</h2>
+                            <p className="text-[1.2rem] font-bold text-white mb-8 leading-relaxed">
+                                すべての基本操作を<br/>マスターしました！
+                            </p>
+                            <button onClick={() => handleBackToTop()} className="bg-[#facc15] text-[#422006] text-[18px] font-bold py-[16px] px-[20px] w-full rounded-2xl shadow-lg border-none active:scale-95 transition-transform">
+                                🏠 ウェルカム画面へ戻る
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+            </div>
+        )}
+        <div id="sr-announcer" className="sr-only" aria-live="assertive">{announceText}</div>
+        {jumpInput && (<div className="fixed top-20 right-10 bg-yellow-400 text-black px-6 py-3 rounded-full font-black text-2xl z-50 shadow-2xl animate-bounce">小節移動: {jumpInput}</div>)}
+        {/* 背景の黒い半透明カバー（タップで楽譜に戻る＆喋る！） */}
+        {isSettingsOpen && (
+            <div className="fixed inset-0 bg-black/60 z-40" 
+                onClick={() => {
+                    setIsSettingsOpen(false);
+                    setTabletLayout('score_only');
+                    setMobileView('score');
+                    speak("楽譜画面です", tempo);
+                }}
+                // 👇 ★追加：黒いカバーの上でもスワイプが効くようにする！
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            ></div>
+        )}
+{/* ================================================= */}
+        {/* 🛠️ 修正版：VoiceOverに裏読みさせない設定画面パネル */}
+        {/* ================================================= */}
+        <aside 
+            id="settings-panel" 
+            className={`fixed md:relative z-50 h-full control-panel border-slate-700 flex flex-col transition-all duration-300 overflow-hidden ${isSettingsOpen ? 'w-80 p-4 border-r' : 'w-0 p-0 border-none'}`}
+            // 👇 ★原因2を解決！閉じている（isSettingsOpenがfalse）時は、VoiceOverから完全に存在を消し去ります
+            aria-hidden={!isSettingsOpen ? "true" : "false"}
+        >
+            <div className="flex justify-between items-center border-b border-slate-600 pb-2 shrink-0 w-72">
+                <h2 className="text-xl font-bold">設定</h2>
+                
+                {/* 閉じる時に「楽譜画面です」と喋る */}
+                <button onClick={() => { setIsSettingsOpen(false); speak("楽譜画面です。"); }} className="text-slate-400 font-bold p-2 hover:bg-slate-700 rounded-lg">✕</button>
+            </div>
+            
+            <div className="space-y-4 overflow-y-auto pb-10 w-72 mt-4">
+                <div className="flex gap-2 bg-slate-800 p-2 rounded-xl border border-slate-600">
+                    <button onClick={handleBackToTop} className="flex-1 p-2 bg-yellow-400 font-bold rounded-lg text-sm hover:bg-yellow-300 text-yellow-900 shadow">🔙 別の曲</button>
+                    <button onClick={handleDownloadPDF} className="flex-1 p-2 bg-blue-600 font-bold rounded-lg text-sm hover:bg-blue-500 text-white shadow">🖨️ PDF</button>
+                </div>
+
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLScTGTu-CmBbUgqoeoEnQ4SCroWadSsFKIma6dCNgeKeI0gCiA/viewform?usp=header" target="_blank" rel="noopener noreferrer" className="block w-full p-2.5 bg-pink-600 font-bold rounded-lg text-sm hover:bg-pink-500 text-white shadow-md text-center border border-pink-700 active:scale-95 transition-all">
+                    📝 アンケート・不具合のご報告
+                </a>
+
+                <fieldset className="border border-slate-600 p-2 rounded">
+                    <legend className="text-xs px-2 font-bold text-slate-400">再生モード</legend>
+                    <div className="flex flex-col gap-2 mt-1">
+                        {["①音名のみ", "②音名と音価", "③演奏"].map(m => (
+                            <button key={m} onClick={()=>{if(playing) stopPlayback(); setPlayMode(m);}} className={`w-full p-2 rounded text-sm font-bold text-left px-3 ${playMode===m?'bg-blue-600':'bg-slate-700'}`}>{m.replace(/①|②|③/g,"")}</button>
+                        ))}
+                    </div>
+                </fieldset>
+                
+                <div className="flex flex-col gap-1 bg-slate-700/50 p-2 rounded-xl">
+                    <label className="text-xs text-slate-300 font-bold pl-1">再生・表示のまとまり</label>
+                    <select value={blockSize} onChange={e=>handleBlockSizeChange(e.target.value)} className="bg-slate-800 text-blue-400 font-bold p-2 rounded-lg border border-slate-600 outline-none text-sm h-10">
+                        <option value="1">1小節ずつ</option><option value="4">4小節ずつ</option><option value="8">8小節ずつ</option><option value="all">全曲通し</option>
+                    </select>
+                </div>
+                
+                <div className="space-y-1">
+                    <label className="text-xs text-slate-400 font-bold">利き手設定</label>
+                    <div className="flex gap-2">
+                        <button onClick={()=>setIsRightHanded(true)} className={`flex-1 p-2 rounded text-sm font-bold ${isRightHanded?'bg-blue-600':'bg-slate-700'}`}>右利き</button>
+                        <button onClick={()=>setIsRightHanded(false)} className={`flex-1 p-2 rounded text-sm font-bold ${!isRightHanded?'bg-blue-600':'bg-slate-700'}`}>左利き</button>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col gap-1 bg-slate-700/50 p-2 rounded-xl">
+                    <label className="text-xs text-slate-300 font-bold pl-1">オクターブ記法</label>
+                    <select value={octaveMode} onChange={e=>{window.speechSynthesis.cancel();setOctaveMode(e.target.value);}} className="bg-slate-800 text-blue-400 font-bold p-2 rounded-lg border border-slate-600 outline-none text-sm h-10">
+                        <option>①C4（数字式）</option><option>②一点ハ（日本式）</option><option>③中央ド（オリジナル）</option>
+                    </select>
+                </div>
+                
+                <div className="flex flex-col gap-3 border-t border-slate-600 pt-3">
+                    <div className="flex items-center justify-between px-1"><span className="text-sm font-bold text-slate-300">カウントイン（予備拍）</span><label className="switch"><input type="checkbox" checked={useCountIn} onChange={(e)=>setUseCountIn(e.target.checked)} /><span className="slider"></span></label></div>
+                    <div className="flex items-center justify-between px-1"><span className="text-sm font-bold text-slate-300">メトロノーム音</span><label className="switch"><input type="checkbox" checked={useMetronome} onChange={(e)=>setUseMetronome(e.target.checked)} /><span className="slider"></span></label></div>
+                    <div className="flex flex-col px-1">
+                        <div className="flex justify-between items-center text-xs font-bold text-slate-400 mb-1"><span>音量バランス (左 伴奏)</span><span>(右 メロディ)</span></div>
+                        <input type="range" min="0" max="100" value={volBalance} onChange={(e)=>setVolumeBalance(Number(e.target.value))} className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer" />
+                    </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl"><span className="text-sm font-bold">操作ガイド表示</span><label className="switch"><input type="checkbox" checked={showGuide} onChange={(e)=>{setShowGuide(e.target.checked);}} /><span className="slider"></span></label></div>
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl"><span className="text-sm font-bold">ボタンにショートカット表示</span><label className="switch"><input type="checkbox" checked={showShortcuts} onChange={(e)=>setShowShortcuts(e.target.checked)} /><span className="slider"></span></label></div>
+                
+                <div className="space-y-2 pt-4 border-t border-slate-700">
+                    <div className="text-xs font-bold text-slate-500 uppercase">Accessibility</div>
+                    <button 
+                        onClick={() => {
+                            const nextState = !isVoiceEnabled;
+                            setIsVoiceEnabled(nextState);
+                            if (nextState) {
+                                const msg = new SpeechSynthesisUtterance("音声サポートを有効にしました");
+                                msg.lang = 'ja-JP';
+                                window.speechSynthesis.speak(msg);
+                            }
+                        }} 
+                        className={`w-full py-3 rounded-xl font-bold flex justify-between px-4 items-center ${isVoiceEnabled ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
+                    >
+                        <span>音声サポート</span>
+                        <span>{isVoiceEnabled ? 'ON' : 'OFF'}</span>
+                    </button>
+                </div>
+                
+                <label className="flex items-center space-x-2 text-white text-sm p-3 bg-slate-800 rounded-xl border border-slate-600 cursor-pointer transition-all hover:bg-slate-700 active:scale-95 shadow-md">
+                    <input type="checkbox" checked={tapMode} onChange={(e) => setTapMode(e.target.checked)} className="w-5 h-5 accent-pink-500 cursor-pointer" />
+                    <span className="font-bold">👆 画面タップ操作 (左:戻る / 右:進む)</span>
+                </label>
+            </div>
+        </aside>
+        <main className={`flex-1 flex flex-col md:flex-row h-full relative min-w-0 ${!isRightHanded ? 'md:flex-row-reverse' : ''}`}>
+            
+            {/* 👇 ★魔法を追加：設定が開いている(isSettingsOpen)時は、楽譜エリア全体をVoiceOverから隠す！ */}
+            {/* 👇 ★修正：設定画面が開いていて、かつ「音声サポート(isVoiceEnabled)がON」の時だけ隠す！ */}
+            <section className={scoreSectionClass} aria-hidden={isSettingsOpen && isVoiceEnabled ? "true" : "false"}>
+                <header className={`hidden md:flex bg-slate-900 border-b border-slate-700 flex-col w-full shrink-0 z-20`}>
+                    <div className="flex justify-between items-center p-2 md:p-3 min-h-[4rem]">
+                        <div className="flex items-center gap-2 w-1/4 pl-1">
+                            {/* 👇 ★新規追加：パソコン用ホームボタン */}
+                            {/* 👇 ★修正：おまかせ仕様にして、確実に戻る！ */}
+                            <button onClick={handleBackToTop} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-gray-500 text-sm flex items-center">
+                                🏠 ホーム
+                            </button>
+                            {/* 👇 パソコン用の設定ボタン（開く/閉じるの切り替え＋アナウンス） */}
+                            <button onClick={() => { 
+                                setIsSettingsOpen(prev => {
+                                    const nextState = !prev;
+                                    if (nextState) speak("設定画面です。");
+                                    else speak("楽譜画面です。");
+                                    return nextState;
+                                });
+                            }} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-green-500 text-sm flex items-center">
+                                設定 <span className="key-guide-inline ml-1">S</span>
+                            </button>                            
+                            {/* 👇 パソコン用のガイドボタン */}
+                            <button onClick={() => { 
+                                setShowGuide(true); 
+                                speak("ガイドを開きました。"); 
+                            }} className="bg-yellow-400 text-yellow-900 font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-yellow-300 text-sm flex items-center">
+                                ガイド <span className="key-guide-inline key-guide-dark ml-1">G</span>
+                            </button>                        
+                            </div>
+                        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-2">
+                            <div className="hidden md:flex flex-col items-center w-full">
+                                <h1 className="text-base lg:text-lg font-black text-green-400 truncate w-full text-center leading-tight">{headerInfo.title || "名称未設定"}</h1>
+                                <div className="text-[10px] lg:text-xs font-bold text-slate-300 flex justify-center flex-wrap gap-x-3 gap-y-1 mt-0.5">
+                                    <span>拍子: {headerInfo.timeSignature?.split('/').reverse().join('分の')}拍子</span><span>調号: {keyDispDict[headerInfo.keySignature || "0"]}</span><span>テンポ: {tempo}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 items-center justify-end w-1/4 pr-1">
+                            {/* 👇 賢い切り替えボタンに、アナウンスの魔法を追加！ */}
+                            <button onClick={() => { 
+                                setTabletLayout(prev => {
+                                    const nextState = prev === 'split' ? 'score_only' : (prev === 'score_only' ? 'control_only' : 'split');
+                                    // 👇 次の画面が何になるかを計算して喋る！
+                                    if (nextState === 'split') speak("楽譜と操作画面の、分割表示です。");
+                                    else if (nextState === 'control_only') speak("操作画面です。");
+                                    else speak("楽譜画面です。");
+                                    return nextState;
+                                }); 
+                            }} className="text-slate-300 hover:text-white font-bold py-1 px-3 border border-slate-600 rounded-lg text-xs flex items-center" title="レイアウト切替">
+                                {tabletLayout === 'split' ? '📄 楽譜のみ' : (tabletLayout === 'score_only' ? '🎛️ 操作のみ' : '🌗 左右分割')}<span className="key-guide-inline ml-1 bg-black/40 text-yellow-300 border-yellow-300/50">M</span>
+                            </button>
+                        </div>                    
+                        </div>
+                </header>
+
+                <div className="w-full bg-blue-50 pt-3 border-b border-blue-200 flex flex-col shrink-0 text-black" aria-hidden={isTutorial ? "true" : "false"}>
+                    
+                    {/* スマホ用ボタン群 */}
+                    <div className="md:hidden flex justify-center gap-2 px-3 pb-2">
+                        <button onClick={handleBackToTop} className="flex-1 bg-gray-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ホーム</button>
+                        <button onClick={() => { setIsSettingsOpen(true); speak("設定画面です。"); }} className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-green-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">設定 <span className="key-guide-inline">S</span></button>
+                        <button onClick={() => { setShowGuide(true); speak("ガイドを開きました。"); }} className="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2 rounded-lg shadow-sm border-b-4 border-yellow-600 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ガイド <span className="key-guide-inline key-guide-dark">G</span></button>
+                        <button onClick={() => { setMobileView('control'); speak("操作画面です。"); }} className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-blue-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">操作 <span className="key-guide-inline">M</span></button>
+                    </div>
+
+                    {/* 👇 修正版：中央寄せ＆VoiceOver対応のボタンエリア */}
+                    <div className="flex flex-col items-center w-full">
+                        <div className="relative flex flex-col items-center mb-2 px-2 mt-1 w-full max-w-md"> {/* ←中央寄せのためのラッパー */}
+                            
+                            <div className="w-full flex justify-between gap-2 text-[10px] sm:text-xs font-bold mb-1 px-1">
+                                
+                                <button 
+                                    onClick={() => {
+                                        const nextMode = blockSize === 1 ? 4 : (blockSize === 4 ? 8 : (blockSize === 8 ? 'all' : 1));
+                                        setBlockSize(nextMode);
+                                        speak(`まとまりを、${nextMode === 'all' ? '全曲' : nextMode + '小節'}に切り替えました。`);
+                                    }}
+                                    aria-label={`再生のまとまりを切り替えます。現在は${blockSize === 'all' ? '全曲' : blockSize + '小節'}です`}
+                                    className="flex-1 bg-blue-50 text-blue-600 px-1 py-2 rounded-lg border border-blue-200 active:bg-blue-100 transition-colors shadow-sm"
+                                >
+                                    {blockSize === 'all' ? '🔄 全曲' : `🎵 ${blockSize}小節`}
+                                </button>
+
+                                {/* 中：再生モード切替（「のみ」対応の完全連動版） */}
+                                <button 
+                                    onClick={() => {
+                                        // 設定画面に合わせて「①音名のみ」→「②音名と音価」→「③演奏」の順に切り替えます
+                                        const nextPlayMode = playMode === "①音名のみ" ? "②音名と音価" : (playMode === "②音名と音価" ? "③演奏" : "①音名のみ");
+                                        if(playing) stopPlayback(); // 再生中なら安全に止める処理
+                                        setPlayMode(nextPlayMode);
+                                        
+                                        // ①②③の数字を削って綺麗に喋らせる
+                                        const speakText = nextPlayMode.replace(/①|②|③/g, "").replace("のみ", "");
+                                        speak(`再生モードを、${speakText}に切り替えました。`);
+                                    }}
+                                    aria-label={`再生モードを切り替えます。現在は${playMode.replace(/①|②|③/g, "")}です`}
+                                    className="flex-1 bg-purple-50 text-purple-600 px-1 py-2 rounded-lg border border-purple-200 active:bg-purple-100 transition-colors shadow-sm"
+                                >
+                                    {playMode === "①音名のみ" ? '🎵 音名' : (playMode === "②音名と音価" ? '⏱️ 音名+音価' : '🎹 演奏')}
+                                </button>
+                                
+                                <button 
+                                    onClick={() => {
+                                        const nextPart = part === "右手" ? "左手" : (part === "左手" ? "両手" : "右手");
+                                        setPart(nextPart);
+                                        speak(`パートを、${nextPart}に切り替えました。`);
+                                    }}
+                                    aria-label={`パートを切り替えます。現在のパートは${part}です`}
+                                    className="flex-1 bg-orange-50 text-orange-600 px-1 py-2 rounded-lg border border-orange-200 active:bg-orange-100 transition-colors shadow-sm"
+                                >
+                                    ✋ {part}
+                                </button>
+                            </div>
+
+                            {/* 小節番号表示エリア */}
+                            <div className="flex flex-col items-center justify-center mt-1">
+                                <div className="flex items-end justify-center gap-2">
+                                    <span className="text-4xl font-black text-blue-900 leading-none">
+                                        {measure === 0 ? "曲情報" : (playing && activeMeasure ? activeMeasure : (measureMap[measure] || (enrichedEvents?.find(e => e.m === measure)?.originalM) || measure))}
+                                    </span>
+                                    {measure !== 0 && <span className="text-sm font-bold text-blue-800 pb-1">小節目</span>}
+                                    
+                                    {playing && measure !== 0 && (
+                                        <span className="text-sm md:text-base font-black text-red-600 pb-1 ml-2 animate-pulse">
+                                            ▶ 再生中
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                {measure !== 0 && (
+                                    <div className="text-[10px] text-slate-400 font-bold mt-1">
+                                        （通算: {measure} / {maxMeasure}）
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* テーブルヘッダー */}
+                    <div className="grid grid-cols-[50px_1fr_1fr] gap-3 items-center bg-blue-100 px-4 py-1.5 text-[10px] sm:text-xs font-black text-blue-900 border-t border-blue-200 mt-2">
+                        <div className="text-center border-r border-blue-300 pr-2">拍</div><div className="text-center">左手 (L)</div><div className="text-center">右手 (R)</div>
+                    </div>
+                </div>
+
+<div id="score-container" aria-hidden="true" className="flex-1 overflow-y-auto p-2 bg-slate-50 hide-scrollbar relative text-black" onClick={handleScoreClick} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onContextMenu={(e) => e.preventDefault()}>                    {measure === 0 ? (
+                        <div className="flex flex-col items-center justify-start pt-6 pb-32 px-4 text-center h-full overflow-y-auto pointer-events-auto">
+                            <div className="text-4xl mb-3 animate-bounce pointer-events-none">🎵</div>
+                            <h2 className="text-xl md:text-3xl font-black text-slate-800 mb-4 pointer-events-none">{headerInfo.title || "名称未設定"}</h2>
+                            <div className="bg-white border-2 border-slate-200 p-4 rounded-2xl shadow-sm space-y-2 text-left w-full max-w-sm pointer-events-auto">
+                                <p className="font-bold text-slate-600">拍子: <span className="text-slate-800 text-lg">{headerInfo.timeSignature?.split('/').reverse().join('分の')}拍子</span></p>
+                                <p className="font-bold text-slate-600">調号: <span className="text-slate-800 text-lg">{keyDispDict[headerInfo.keySignature || "0"]}</span></p>
+                                <p className="font-bold text-slate-600">テンポ: <span className="text-slate-800 text-lg">{headerInfo.tempo ? `4分音符 = ${headerInfo.tempo} BPM` : "指定なし"}</span></p>
+                                <p className="font-bold text-yellow-600 mt-4 border-t pt-4">▶ 最初の音: <span className="text-slate-800 text-lg block mt-1">{firstPitchDispText}</span></p>
+                            </div>
+                            <div className="mt-5 flex flex-col items-center gap-2 pointer-events-none">
+                                <p className="text-sm font-black text-blue-600 bg-blue-100 px-4 py-2 rounded-full border border-blue-200 shadow-sm">▶️ ダブルタップで再生スタート</p>
+                                <div className="anim-tap opacity-80 mt-1">👆👆</div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-2 pb-6 px-1">
+                            {currentEvents.map((ev, idx) => {
+                                const isNewMeasure = idx === 0 || currentEvents[idx-1].originalM !== ev.originalM;
+                                const startDirs = (ev.allDirs || []).filter(d => ["repeat_start", "ending_1", "ending_2", "1.", "2.", "Coda", "Segno"].includes(d));
+                                const endDirs = (ev.allDirs || []).filter(d => ["repeat_end", "D.C.", "D.S.", "Fine", "to Coda"].includes(d));
+
+                                return (
+                                    <React.Fragment key={ev.uniqueId}>
+                                        {isNewMeasure && (<div className="text-center text-xs font-bold text-slate-400 my-2 mt-4 bg-slate-200 py-1 rounded-full w-24 mx-auto border border-slate-300 shadow-sm pointer-events-none">第 {ev.originalM} 小節</div>)}
+                                        {startDirs.length > 0 && (
+                                            <div className="flex justify-center my-2 pointer-events-none">
+                                                {startDirs.map((d, di) => (<div key={`sd-${di}`} className="bg-yellow-300 text-yellow-900 px-4 py-1.5 rounded-lg shadow-sm font-black text-sm border-2 border-yellow-400 flex items-center gap-2"><span>▶</span> {dict.DIRECTIONS[d]?.disp || d}</div>))}
+                                            </div>
+                                        )}
+
+                                        <div id={`card-${ev.uniqueId}`} className={`relative p-3 rounded-xl border-2 transition-all scroll-m-20 ${highlightId===ev.uniqueId?'bg-blue-50 border-blue-500 scale-[1.02] shadow-md':'bg-white border-slate-200 shadow-sm'}`}>
+                                            <div className="grid grid-cols-[50px_1fr_1fr] gap-3 items-center pointer-events-none">
+                                                <div className={`text-lg font-black border-r-2 text-center pr-2 ${highlightId===ev.uniqueId?'border-blue-200 text-blue-600':'text-slate-400 border-slate-100'}`}>{ev.displayBeat} 拍</div>
+                                                <div className={`flex justify-center ${(part==="左手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_l, ev.relL, octaveMode, dict, playMode)} playMode={playMode} isLeft={true} /></div>
+                                                <div className={`flex justify-center ${(part==="右手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_r, ev.relR, octaveMode, dict, playMode)} playMode={playMode} isLeft={false} /></div>
+                                            </div>
+                                        </div>
+                                        
+                                        {endDirs.length > 0 && (
+                                            <div className="flex justify-center my-2 pointer-events-none">
+                                                {endDirs.map((d, di) => (<div key={`ed-${di}`} className="bg-yellow-300 text-yellow-900 px-4 py-1.5 rounded-lg shadow-sm font-black text-sm border-2 border-yellow-400 flex items-center gap-2"><span>↩️</span> {dict.DIRECTIONS[d]?.disp || d}</div>))}
+                                            </div>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                <div className="hidden md:block w-full px-6 pb-4 pt-2 bg-slate-100 border-t border-slate-200 shrink-0 text-black" aria-hidden="true">
+                    <div className="flex justify-between text-[10px] px-1 text-slate-500 font-bold mb-1"><label htmlFor="measure-slider">スライドまたはテンキー数字で開始小節を移動 (0で曲情報)</label></div>
+                    <input type="range" id="measure-slider" className="w-full cursor-pointer" min="0" max={maxMeasure} value={measure} 
+                    onChange={e => {
+                        if (playing) stopPlayback(); 
+                        const val = Number(e.target.value); 
+                        setMeasure(val); 
+                        setHighlightId(null);
+                        speakMeasureInfo(val); // 👈 超スッキリ！
+                    }} />
+                </div>
+            </section>
+
+            <section className={controlSectionClass} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+                {tabletLayout === 'control_only' && (
+                    <div className="hidden md:flex justify-end mb-2">
+                        {/* 👇 タブレットのレイアウト切替＋状態に合わせて喋る */}
+                        <button onClick={() => { 
+                            setTabletLayout(prev => {
+                                const nextState = prev === 'split' ? 'score_only' : (prev === 'score_only' ? 'control_only' : 'split');
+                                if (nextState === 'split') speak("楽譜と操作画面の、分割表示です。");
+                                else if (nextState === 'score_only') speak("楽譜画面です。");
+                                else speak("操作画面です。");
+                                return nextState;
+                            }); 
+                        }} className="text-slate-300 hover:text-white font-bold py-1 px-3 border border-slate-600 rounded-lg text-xs flex items-center" title="レイアウト切替">
+                            🌗 左右分割<span className="key-guide-inline ml-1 bg-black/40 text-yellow-300 border-yellow-300/50">M</span>
+                        </button>
+                    </div>
+                )}
+                
+                {/* 👇 モバイルで楽譜に戻る＋喋る */}
+                <button onClick={() => { setMobileView('score'); speak("楽譜画面です。"); }} className="md:hidden w-full bg-yellow-400 text-yellow-900 font-bold py-3 rounded-xl shadow-md active:scale-95 text-base flex justify-center items-center relative">
+                    🔙 楽譜に戻る<span className="key-guide-inline key-guide-dark ml-2">M</span>
+                </button>                <div className="flex flex-col gap-3">
+                    {extraControlsJSX}
+                    <div className="md:hidden w-full px-2 text-slate-300 mt-1">
+                        <div className="flex justify-between text-[10px] px-1 text-slate-400 font-bold mb-1"><label>スライドで開始小節を移動 (0で曲情報)</label></div>
+                        <input type="range" className="w-full cursor-pointer" min="0" max={maxMeasure} value={measure} 
+                        onChange={e => {
+                            if (playing) stopPlayback(); 
+                            const val = Number(e.target.value); 
+                            setMeasure(val); 
+                            setHighlightId(null);
+                            speakMeasureInfo(val); // 👈 超スッキリ！
+                        }} />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 flex-1 min-h-[180px]">
+                    <div></div>
+                    <button id="btn-up" onClick={()=>playStepAction(currentEvents[Math.max(0, currentIndex-1)])} className="btn-large h-full py-1 bg-blue-700 text-white border-b-4 border-blue-900">
+                        <span className="key-guide hidden md:block">↑</span><span className="text-xl">⬆️</span><span className="text-[11px] font-bold">1音戻る</span>
+                    </button>
+                    <div></div>
+                    
+                    <button id="btn-left" onClick={()=>{
+                        if (playing) stopPlayback(); 
+                        const step = (measure === 1) ? 1 : (blockSize === 'all' ? 1 : blockSize); 
+                        setMeasure(m=>{ 
+                            const prevM = Math.max(0, m - step); 
+                            speakMeasureInfo(prevM); // 👈 超スッキリ！
+                            return prevM; 
+                        }); 
+                        setHighlightId(null);
+                    }} className="btn-large h-full py-1 bg-slate-700 text-white border-b-4 border-slate-900">
+                        <span className="key-guide hidden md:block">←</span><span className="text-2xl">⬅️</span><span className="text-[11px] font-bold">前の小節</span>
+                    </button>
+                    
+                    <button id="btn-replay" onClick={()=>{announce(setAnnounceText, "もう一度読み上げます"); playStepAction(currentEvents[currentIndex >= 0 ? currentIndex : 0]);}} className="flex flex-col items-center justify-center bg-indigo-900 rounded-2xl border-2 border-indigo-400 text-indigo-100 relative shadow-inner active:scale-95 transition-all cursor-pointer">
+                        <span className="key-guide text-[8px] hidden md:block" style={{top:'2px',right:'2px'}}>BS</span><span className="text-2xl mb-1">🔄</span><span className="text-[11px] font-bold">もう一度</span>
+                    </button>
+                    
+                    <button id="btn-right" onClick={()=>{
+                        if (playing) stopPlayback(); 
+                        const step = (measure === 0) ? 1 : (blockSize === 'all' ? 1 : blockSize); 
+                        setMeasure(m=>{ 
+                            const nextM = Math.min(maxMeasure, m + step); 
+                            speakMeasureInfo(nextM); // 👈 超スッキリ！
+                            return nextM; 
+                        }); 
+                        setHighlightId(null);
+                    }} className="btn-large h-full py-1 bg-slate-700 text-white border-b-4 border-slate-900">
+                        <span className="key-guide hidden md:block">→</span><span className="text-2xl">➡️</span><span className="text-[11px] font-bold">次の小節</span>
+                    </button>
+                    
+                    <div></div>
+                    <button id="btn-down" onClick={()=>playStepAction(currentEvents[Math.min(currentEvents.length-1, currentIndex+1)])} className="btn-large h-full py-1 bg-blue-700 text-white border-b-4 border-blue-900">
+                        <span className="key-guide hidden md:block">↓</span><span className="text-xl">⬇️</span><span className="text-[11px] font-bold">1音進む</span>
+                    </button>
+                    <div></div>
+                </div>
+
+                <div className="shrink-0 mt-1 md:mt-auto">
+                    <button onClick={togglePlay} className={`w-full h-16 md:h-20 rounded-2xl flex items-center justify-center gap-3 text-xl md:text-2xl font-black shadow-lg border-b-8 active:translate-y-2 transition-all relative ${playing?'bg-red-600 border-red-800':'bg-green-600 border-green-800'}`}>
+                        <span className="key-guide hidden md:block" style={{top:'4px'}}>Space</span>
+                        {isPianoLoading ? <span className="animate-pulse">🎹 音源準備中...</span> : (playing?'⏹️ 停止':'▶️ 再生')}
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        {showGuide && (
+            <div role="dialog" aria-modal="true" aria-label="操作ガイド" className="fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-[95%] max-w-md bg-slate-800/95 backdrop-blur border border-slate-600 rounded-xl shadow-2xl z-[60] p-4 text-slate-200 text-xs">
+                <div className="sr-only">操作ガイドを開きました。ジェスチャー操作：1本指の左右スワイプで1音移動。2本指の左右スワイプで小節移動。3本指スワイプでモード切替。画面の長押しでもう一度読み上げ。ダブルタップで再生と停止。右上の閉じるボタンでこのガイドを非表示にできます。</div>
+                <button onClick={() => setShowGuide(false)} aria-label="ガイドを閉じる" className="absolute -top-3 -right-3 w-8 h-8 bg-slate-700 rounded-full border border-slate-500 flex items-center justify-center text-white shadow-lg text-sm font-black">✕</button>
+                <div className="font-black text-blue-400 mb-2 text-center text-sm tracking-wide" aria-hidden="true">💡 操作ガイド</div>
+                <div className="grid grid-cols-2 gap-4" aria-hidden="true">
+                    <div>
+                        <div className="text-center text-yellow-300 font-bold border-b border-slate-600 mb-1 pb-1">👆 ジェスチャー</div>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[10px]">
+                            <span className="text-right text-slate-400 font-bold">Wタップ</span><span className="font-bold text-green-400">再生/停止</span>
+                            <span className="text-right text-slate-400 font-bold">長押し</span><span className="font-bold">もう一度(1音)</span>
+                            <span className="text-right text-slate-400 font-bold">1本指 左右</span><span className="font-bold">1音 移動</span>
+                            <span className="text-right text-slate-400 font-bold">2本指 左右</span><span className="font-bold">小節 移動</span>
+                            <span className="text-right text-slate-400 font-bold">2本指 上下</span><span className="font-bold">モード 切替</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div className="text-center text-pink-300 font-bold border-b border-slate-600 mb-1 pb-1">⌨️ キーボード</div>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[10px]">
+                            <span className="text-right text-slate-400 font-bold">Space</span><span className="font-bold text-green-400">再生/停止</span>
+                            <span className="text-right text-slate-400 font-bold">BS</span><span className="font-bold">もう一度(1音)</span>
+                            <span className="text-right text-slate-400 font-bold">矢印 ↑↓</span><span className="font-bold">1音 移動</span>
+                            <span className="text-right text-slate-400 font-bold">矢印 ←→</span><span className="font-bold">小節 移動</span>
+                            <span className="text-right text-slate-400 font-bold">S/G/M</span><span className="font-bold">設定/ガイド/切替</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-3 text-center text-[9px] text-slate-500" aria-hidden="true">※ 左上の設定メニューから再表示できます</div>
+            </div>
+        )}
+      </div>
+    );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App /></ErrorBoundary>);
+    </script>
+</body>
+</html>
