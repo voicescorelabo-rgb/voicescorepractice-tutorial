@@ -322,11 +322,14 @@ const App = () => {
     const [useMetronome, setUseMetronome] = useState(true);
     const [useCountIn, setUseCountIn] = useState(true);
     const [volBalance, setVolumeBalance] = useState(50);
-    
-    const [part, setPart] = useState("右手");
-    const [playMode, setPlayMode] = useState("normal");
+    // 警告画面を表示するかどうかのスイッチ（最初は true = 表示する）
+    const [showVoiceOverWarning, setShowVoiceOverWarning] = useState(true);
+    // 👇 デフォルト設定を「両手」「演奏モード」「全曲通し」に変更しました！
+    const [part, setPart] = useState("両手");
+    const [playMode, setPlayMode] = useState("③演奏"); // 下のボタンのコードに合わせて "③演奏" にします
     const [octaveMode, setOctaveMode] = useState("③中央ド（オリジナル）");
     const [measure, setMeasure] = useState(0);
+    const [blockSize, setBlockSize] = useState('all'); // 全曲通しをデフォルトに
         // ==========================================
     // 👇 スピードアップ魔法：小節番号の「早見表」を超・強化！
     // ==========================================
@@ -357,33 +360,51 @@ const App = () => {
         return map;
     }, [enrichedEvents, maxMeasure]);
     // ==========================================
-    // 👇 修正：超・親切なおしゃべり専用係！（絶対見つけるマン版）
+    // 👇 修正：超・親切なおしゃべり専用係！（「○回目の」対応版！）
     // ==========================================
     const speakMeasureInfo = (targetM) => {
         const numTarget = Number(targetM);
         if (numTarget === 0) {
             speak("きょくじょうほう", tempo);
-        } else {
-            // 1. まず早見表を見る
-            let origM = measureMap[numTarget];
-            
-            // 2. 早見表になければ、楽譜データ(enrichedEvents)から直接探し出す！（安全ネット）
-            if (origM === undefined && Array.isArray(enrichedEvents)) {
-                const ev = enrichedEvents.find(e => e.m === numTarget);
-                origM = ev ? ev.originalM : numTarget;
-            } else if (origM === undefined) {
-                origM = numTarget;
-            }
+            return;
+        }
 
-            // 3. 喋る！
-            if (numTarget === Number(origM)) {
-                speak(`${origM}しょうせつめ`, tempo);
-            } else {
-                speak(`${origM}しょうせつめ。つうさん、${numTarget}しょうせつめ`, tempo);
+        // 1. まず「本来の小節番号(origM)」を特定する
+        let origM = measureMap[numTarget];
+        
+        if (origM === undefined && Array.isArray(enrichedEvents)) {
+            const ev = enrichedEvents.find(e => e.m === numTarget);
+            origM = ev ? ev.originalM : numTarget;
+        } else if (origM === undefined) {
+            origM = numTarget;
+        }
+
+        // 2. 🌟 ここを追加！曲の頭から今の小節までに、この origM が「何回登場したか」を数える！
+        let repeatCount = 0;
+        for (let i = 1; i <= numTarget; i++) {
+            let checkM = measureMap[i];
+            if (checkM === undefined && Array.isArray(enrichedEvents)) {
+                const ev = enrichedEvents.find(e => e.m === i);
+                checkM = ev ? ev.originalM : i;
+            } else if (checkM === undefined) {
+                checkM = i;
+            }
+            
+            // 数えている番号が、目的の小節番号と同じならカウントアップ
+            if (Number(checkM) === Number(origM)) {
+                repeatCount++;
             }
         }
+
+        // 3. 喋る内容を分岐させる！
+        if (repeatCount > 1) {
+            // 2回目以降なら「2回目の、1小節目」と喋る
+            speak(`${repeatCount}かいめの、${origM}しょうせつめ`, tempo);
+        } else {
+            // 1回目なら今まで通りシンプルに「1小節目」と喋る
+            speak(`${origM}しょうせつめ`, tempo);
+        }
     };
-    const [blockSize, setBlockSize] = useState(8); 
     const [playing, setPlaying] = useState(false);
     const [highlightId, setHighlightId] = useState(null);
     const [activeMeasure, setActiveMeasure] = useState(null);
@@ -412,9 +433,9 @@ const App = () => {
             2: "ボイスオーバーをオフにしてください。準備ができたら、画面のどこでもいいので、タップしてください。",
             3: "それではさっそく、実際の練習画面で体験してみましょう！画面をトントンと2回タップして、きらきら星を聞いてみましょう。準備ができたら、もう一度2回タップして止めてください。",
             4: "次は、自分のペースで１音ずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
-            5: "素晴らしい！次は1つ前の音に戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
-            6: "バッチリです！今の音をもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押しして音を確認できたらクリアです。",
-            7: "お見事です！次は小節の移動です。2本指で、画面を左右にスワイプすると小節を移動します。2回スワイプしてみましょう。",
+            5: "素晴らしい！次は1つ前のおとに戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
+            6: "バッチリです！今のおとをもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押ししておとを確認できたらクリアです。",
+            7: "お見事です！次はしょうせつの移動です。2本指で、画面を左右にスワイプするとしょうせつを移動します。2回スワイプしてみましょう。",
             8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。",
             
             // 👇 ★追加：ステップ9（エンディング）のセリフ！
@@ -556,14 +577,14 @@ const App = () => {
 
     // 🎵 本番画面（チュートリアル以外）の初期アナウンス専用
     useEffect(() => {
-        // ピアノの読み込み(isPianoLoading)を待たない！開いたら即喋る！
-        if (!isTutorial) {
-            const msg = `楽譜画面です。現在の設定は、${part}、${blockSize === 'all' ? '全曲' : blockSize + '小節'}再生です。`;
-            // 古い announce ではなく、今回作った安全な speak を使う
+        // 👇 チュートリアルではなく、かつ「警告画面が消えた時(!showVoiceOverWarning)」に喋る！
+        if (!isTutorial && !showVoiceOverWarning) {
+            // メッセージを合体させて、スムーズに案内します
+            const msg = `設定しました。楽譜画面です。現在の設定は、${part}、${blockSize === 'all' ? '全曲' : blockSize + '小節'}再生です。ダブルタップで再生スタートです。`;
             speak(msg, tempo);
         }
-    // 👇 依存配列を最小限にして、「画面を開いた時」の1回だけにする
-    }, [isTutorial]);
+    // 👇 監視対象に showVoiceOverWarning を追加します
+    }, [isTutorial, showVoiceOverWarning]);
 
     const handleBackToTop = async () => {
         if (playing) stopPlayback();
@@ -693,8 +714,15 @@ const App = () => {
     }, [unrolledEvents, headerInfo.timeSignature]);
 
     const endMeasure = useMemo(() => blockSize === 'all' ? maxMeasure : Math.min(maxMeasure, Math.max(1, measure) + blockSize - 1), [measure, blockSize, maxMeasure]);
-    const currentEvents = useMemo(() => enrichedEvents.filter(e => e.m >= Math.max(1, measure) && e.m <= endMeasure), [measure, endMeasure, enrichedEvents]);
+// 👇 全曲表示の時はハサミを使わないように変更！
+    const currentEvents = useMemo(() => {
+        if (blockSize === 'all') {
+            return enrichedEvents; // 全曲通しの時は切り捨てず、全部表示！
+        }
+        return enrichedEvents.filter(e => e.m >= Math.max(1, measure) && e.m <= endMeasure);
+    }, [measure, endMeasure, enrichedEvents, blockSize]);    
     const currentIndex = useMemo(() => currentEvents.findIndex(e => e.uniqueId === highlightId), [currentEvents, highlightId]);
+
 
     useEffect(() => {
         if (highlightId) {
@@ -707,7 +735,7 @@ const App = () => {
                 const cBottom = cTop + container.clientHeight;
                 
                 if (elBottom > cBottom - 20 || elTop < cTop + 20) {
-                    // ★修正：今いる場所から大きく離れている（300px以上）場合は一瞬でジャンプ
+                    // 今いる場所から大きく離れている場合は一瞬でジャンプ
                     const isFar = Math.abs(elTop - cTop) > 300;
                     container.scrollTo({ 
                         top: elTop - 20, 
@@ -789,95 +817,115 @@ const App = () => {
         });
     };
     // =======================================================
-    // ★タッチ操作の開始（※長押しの真犯人はココでした！）
+    // ★タッチ操作の開始
     // =======================================================
     const handleTouchStart = (e) => {
         if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return; 
         const t = touchRef.current;
-        t.maxTouches = e.touches.length; t.startX = e.touches[0].clientX; t.startY = e.touches[0].clientY; t.startTime = Date.now(); t.handled = false;
+        
+        // 👇 ★追加：複数の指が時間差で触れた時、古いタイマー（ゾンビ）を確実に消す！
+        clearTimeout(t.timer);
+        
+        t.handledByTimer = false;
+        t.maxTouches = e.touches.length; 
+        t.startX = e.touches[0].clientX; 
+        t.startY = e.touches[0].clientY; 
+        t.startTime = Date.now();
         
         resetHintTimer();
 
-        if (t.maxTouches === 1) {
-            t.timer = setTimeout(() => { 
-                t.handled = true; 
+        // 🌟 長押しの発動（400ミリ秒押し続けたら発動！）
+        t.timer = setTimeout(() => { 
+            t.handledByTimer = true; 
+            
+            if (t.maxTouches === 1) {
+                // 👇 ★ここに追加！「再生中の1本指長押し」は保険の停止ボタンとして働く！
+                if (playing) {
+                    stopPlayback();
+                    //speak("停止しました");
+                    return; // 👈 ここで終わるため、誤って1音進んだりしません
+                }
 
-                // 👇 ★追加：チュートリアル中、ステップ6の練習以外の時はここで処理を止める！
+                // （再生中でなければ、通常の「1音進む」処理）
                 if (isTutorial && tutorialStep !== 6) return;
-
                 playStepAction(currentEvents[currentIndex >= 0 ? currentIndex : 0]); 
                 checkTutorialClear(6, 3); 
-            }, 500); 
-        } else { clearTimeout(t.timer); }
+            } 
+        }, 400); 
     };
 
     // =======================================================
-    // ★指を動かしたとき（長押しキャンセル）
+    // ★指を動かしたとき
     // =======================================================
     const handleTouchMove = (e) => {
         if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
         const t = touchRef.current;
         if (e.touches.length > t.maxTouches) t.maxTouches = e.touches.length;
-        const dx = Math.abs(e.touches[0].clientX - t.startX); const dy = Math.abs(e.touches[0].clientY - t.startY);
         
-        // 指が10px以上ブレたら「スワイプだ！」と判断して長押しタイマーを止める
-        if (dx > 10 || dy > 10) clearTimeout(t.timer); 
+        const dx = Math.abs(e.touches[0].clientX - t.startX); 
+        const dy = Math.abs(e.touches[0].clientY - t.startY);
+        
+        // 👇 修正1：30pxだと長押し中にブレて無音キャンセルされやすいので、50pxに広げます！
+        if (dx > 50 || dy > 50) {
+            clearTimeout(t.timer);
+        }
     };
     
-
     // =======================================================
-    // ★タッチ操作とチュートリアル判定の完全版
+    // ★指を離したとき
     // =======================================================
     const handleTouchEnd = (e) => {
         if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
-        const t = touchRef.current; clearTimeout(t.timer);
-        if (t.handled) return;
+        const t = touchRef.current; 
+        
+        clearTimeout(t.timer);
+        
+        // 🌟 長押しが発動済みなら、絶対に他の操作を起こさない
+        if (t.handledByTimer) {
+            if (e.cancelable) e.preventDefault(); 
+            t.handledByTimer = false;
 
-        const touchEndX = e.changedTouches[0].clientX; const touchEndY = e.changedTouches[0].clientY;
-        const deltaX = touchEndX - t.startX; const deltaY = touchEndY - t.startY;
-        const absDx = Math.abs(deltaX); const absDy = Math.abs(deltaY);
-        const duration = Date.now() - t.startTime;
+            // 👇 ★追加：PWA特有のゴーストクリックを防ぐ「盾」を発動！
+            t.ignoreNextClick = true;
+            setTimeout(() => { if(touchRef.current) touchRef.current.ignoreNextClick = false; }, 400);
 
-        // 1. 長押しの判定（ブレ許容 60px）
-        if (absDx < 60 && absDy < 60 && duration > 400) {
-            t.handled = true;
-            if (t.maxTouches === 1) {
-                playStepAction(currentEvents[currentIndex >= 0 ? currentIndex : 0]);
-                checkTutorialClear(6, 3); // 👈 ステップ6（長押し）
-            } else if (t.maxTouches >= 2) {
-                if (playing) stopPlayback();
-                speak("停止しました", tempo);
-            }
             return;
         }
 
-        // 2. スワイプの判定
+        const touchEndX = e.changedTouches[0].clientX; 
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - t.startX; 
+        const deltaY = touchEndY - t.startY;
+        const absDx = Math.abs(deltaX); 
+        const absDy = Math.abs(deltaY);
+        const duration = Date.now() - t.startTime;
+
+        // 1. スワイプの判定
         if (absDx > 40 && absDx > absDy) {
-            t.handled = true; 
+            if (e.cancelable) e.preventDefault(); 
+            // 👇 スワイプの後もゴーストクリックを防ぐ
+            t.ignoreNextClick = true;
+            setTimeout(() => { if(touchRef.current) touchRef.current.ignoreNextClick = false; }, 400);
+
             if (t.maxTouches === 1) {
                 if (deltaX > 0) {
-                    // 👉 右スワイプ（1音進む）
                     if (isTutorial && tutorialStep !== 4) return;
-
                     playStepAction(currentEvents[Math.min(currentEvents.length-1, currentIndex+1)]); 
-                    checkTutorialClear(4, 7); // 👈 ステップ4（右スワイプ）
+                    checkTutorialClear(4, 7); 
                 } else {
-                    // 👈 左スワイプ（1音戻る）
                     if (isTutorial && tutorialStep !== 5) return;
-
                     playStepAction(currentEvents[Math.max(0, currentIndex-1)]); 
-                    checkTutorialClear(5, 5); // 👈 ステップ5（左スワイプ）
+                    checkTutorialClear(5, 5); 
                 }
             } 
             else if (t.maxTouches === 2) {
                 if (isTutorial && tutorialStep !== 7) return;
-
                 if (deltaX > 0) {
                     if (playing) stopPlayback();
                     setMeasure(m => { 
                         const currentStep = (m === 0) ? 1 : (blockSize === 'all' ? 1 : blockSize);
                         const nextM = Math.min(maxMeasure, m + currentStep); 
-                        speakMeasureInfo(nextM); // 👈 超スッキリ！
+                        speakMeasureInfo(nextM); 
                         return nextM; 
                     });
                     setHighlightId(null); 
@@ -886,7 +934,7 @@ const App = () => {
                     setMeasure(m => { 
                         const currentStep = (m === 1) ? 1 : (blockSize === 'all' ? 1 : blockSize);
                         const prevM = Math.max(0, m - currentStep); 
-                        speakMeasureInfo(prevM); // 👈 超スッキリ！
+                        speakMeasureInfo(prevM); 
                         return prevM; 
                     }); 
                     setHighlightId(null); 
@@ -894,62 +942,63 @@ const App = () => {
                 checkTutorialClear(7, 2);
             }
         } else if (absDy > 40 && absDy > absDx) {
-            t.handled = true;
+            if (e.cancelable) e.preventDefault(); 
+            // 👇 スワイプの後もゴーストクリックを防ぐ
+            t.ignoreNextClick = true;
+            setTimeout(() => { if(touchRef.current) touchRef.current.ignoreNextClick = false; }, 400);
+
             if (t.maxTouches === 2) {
                 if (isTutorial && tutorialStep !== 8) return;
-
                 handleScreenCycle();
             }
         }
         
-        // 3. １本指タップ / ダブルタップの判定
-        else if (absDx < 10 && absDy < 10 && duration < 300 && t.maxTouches === 1) {
-            const documentNow = Date.now();
-            if (documentNow - t.lastTap < 300) { 
-                t.handled = true; t.lastTap = 0;
+        // 2. １本指タップ / ダブルタップの判定
+        else if (absDx <= 40 && absDy <= 40 && t.maxTouches === 1) {
+            if (duration < 350) {
+                const documentNow = Date.now();
                 
-                if (isTutorial && tutorialStep !== 3) return;
+                if (documentNow - t.lastTap < 600) { 
+                    t.lastTap = 0; 
+                    if (e.cancelable) e.preventDefault();
+                    if (isTutorial && tutorialStep !== 3) return;
 
-                // 👇 ★先生のアイデアを具現化した「ゲーム風リトライ＆クリア判定」
-                if (isTutorial && tutorialStep === 3) {
-                    const currentCount = tutorialStateRef.current ? tutorialStateRef.current.count : 0;
-                    
-                    // 🚨 【やり直しルート】
-                    // タップした瞬間に「曲が止まっている」かつ「すでに1回再生ボタンを押している」
-                    // ＝ユーザーが途中で止められず、曲が自然に最後まで終わって自動停止していたケース！
-                    if (!playing && currentCount >= 1) {
-                        window.speechSynthesis.cancel(); // 喋り声を一度リセット
-                        speak("最後まで再生されましたね。もう一度ダブルタップして、今度は途中で止めてみてください。", tempo);
-                        
-                        setTutorialCount(0);      // カウントを0にリセットして
-                        togglePlay();             // もう一度きらきら星を再生！
-                        checkTutorialClear(3, 2); // カウントを「1回目再生中」の状態にセット
-                        return;
-                    }
-                    
-                    // 🎉 【成功（クリア）ルート】
-                    // 曲が流れている最中に、狙い通りダブルタップができたケース！
-                    if (playing) {
-                        stopPlayback(); // 守護神のコードで曲を即座にストップ！
-                        
-                        // 👇 ★修正2：操作モードによって進むステップと案内を分岐させます！
-                        if (controlMode === 'tap') {
-                            speak("ナイスコントロール！途中で止めることができましたね。クリアです！次は一音ずつの移動練習です。画面の右半分をポンと叩くと一音進み、左半分を叩くと一音戻ります。まずは右側を叩いて進んでみてください。", tempo);
-                            setTutorialStep(3.5);   // 📱 タッチ操作の人は新設の3.5へ！
-                        } else {
-                            speak("ナイスコントロール！途中で止めることができましたね。クリアです！", tempo);
-                            setTutorialStep(4);     // 👆 スワイプ操作の人は元のステップ4へ！
+                    if (isTutorial && tutorialStep === 3) {
+                        const currentCount = tutorialStateRef.current ? tutorialStateRef.current.count : 0;
+                        if (!playing && currentCount >= 1) {
+                            window.speechSynthesis.cancel();
+                            speak("最後まで再生されましたね。もう一度ダブルタップして、今度は途中で止めてみてください。");
+                            setTutorialCount(0);      
+                            togglePlay();             
+                            checkTutorialClear(3, 2); 
+                            return;
                         }
-                        
-                        setTutorialCount(0);  // カウントを綺麗にしておく
-                        return;
+                        if (playing) {
+                            stopPlayback(); 
+                            if (controlMode === 'tap') {
+                                speak("ナイスコントロール！途中でとめることができましたね。クリアです！次はいちおんずつの移動練習です。画面の右半分をポンと叩くといちおん進み、左半分を叩くといちおん戻ります。まずは右側を叩いて進んでみてください。");
+                                setTutorialStep(3.5);   
+                            } else {
+                                speak("ナイスコントロール！途中でとめることができましたね。クリアです！");
+                                setTutorialStep(4);     
+                            }
+                            setTutorialCount(0);  
+                            return;
+                        }
+                    }   
+                    togglePlay(); 
+                    checkTutorialClear(3, 2); 
+                } else { 
+                    t.lastTap = documentNow; 
+                    if (playing) {
+                        if (e.cancelable) e.preventDefault();
                     }
-                } // 👈 ★ココ！！！ この閉じカッコ（ } ）が抜けていました！   
-                // 💡 【最初の1回目ルート】まだ何もしてない最初のダブルタップ用
-                togglePlay(); 
-                checkTutorialClear(3, 2); 
-            } else { 
-                t.lastTap = documentNow; 
+                }
+            } else {
+                // 👇 ★追加：長押しに満たなかった中途半端なタッチでもゴーストを防ぐ！
+                if (e.cancelable) e.preventDefault();
+                t.ignoreNextClick = true;
+                setTimeout(() => { if(touchRef.current) touchRef.current.ignoreNextClick = false; }, 400);
             }
         }
     };
@@ -1194,9 +1243,19 @@ const App = () => {
         }
     };
 
-    const togglePlay = () => { if (playing) { stopPlayback(); return; } if (playMode === "③演奏") startPerformance(); else startReading(); };
-
-    // --- ★完成版：見えない大ボタン（ダブルタップとケンカしない賢い版） ---
+    const togglePlay = () => { 
+        if (playing) { 
+            stopPlayback();
+            return; 
+        } 
+        
+        if (playMode === "③演奏") {
+            startPerformance(); 
+        } else {
+            startReading(); 
+        }
+    };
+        // --- ★完成版：見えない大ボタン（ダブルタップとケンカしない賢い版） ---
     const handleScoreClick = (e) => {
         if (!tapMode) return;
         
@@ -1287,6 +1346,78 @@ const App = () => {
                 }
                 return; 
             }
+            // =======================================================
+            // 👇 ★ここから新しく追加するショートカット！
+            // =======================================================
+
+            // Hキー：ホームに戻る（左上のボタン）
+            if (key === 'h') {
+                e.preventDefault();
+                handleBackToTop(); // 👈 先生のアプリに完璧に合わせました！
+                return;
+            }
+
+            // Vキー：楽譜のみ（右上のボタン）
+            if (key === 'v') {
+                e.preventDefault();
+                if (window.innerWidth >= 768) {
+                    setTabletLayout('score_only');
+                } else {
+                    setMobileView('score');
+                }
+                speak("楽譜のみの表示にしました。");
+                return;
+            }
+
+            // Aキー：全曲（緑のブロック切替ボタン）
+            if (key === 'a') {
+                e.preventDefault();
+                const nextSize = blockSize === "all" ? 4 : (blockSize === 4 ? 8 : "all");
+                setBlockSize(nextSize);
+                if (nextSize === "all") speak("全曲モードにしました。");
+                else speak(`${nextSize}小節ごとのモードにしました。`);
+                return;
+            }
+
+            // Pキー：音名（紫の再生モード切替ボタン）
+            if (key === 'p') {
+                e.preventDefault();
+                const nextPlayMode = playMode === "①音名のみ" ? "②音名と音価" : (playMode === "②音名と音価" ? "③演奏" : "①音名のみ");
+                if (playing) stopPlayback(); 
+                setPlayMode(nextPlayMode);
+                
+                let speakText = "";
+                if (nextPlayMode === "①音名のみ") speakText = "おんめい";
+                else if (nextPlayMode === "②音名と音価") speakText = "おんめいとおんか";
+                else if (nextPlayMode === "③演奏") speakText = "えんそう";
+                speak(`再生モードを、${speakText}に切り替えました。`);
+                return;
+            }
+
+            // Rキー：右手（ダイレクト切替）
+            if (key === 'r') {
+                e.preventDefault();
+                setPart("右手");
+                speak("右手に切り替えました");
+                return;
+            }
+
+            // Lキー：左手（ダイレクト切替）
+            if (key === 'l') {
+                e.preventDefault();
+                setPart("左手");
+                speak("左手に切り替えました");
+                return;
+            }
+
+            // Bキー：両手（ダイレクト切替）
+            if (key === 'b') {
+                e.preventDefault();
+                setPart("両手");
+                speak("両手に切り替えました");
+                return;
+            }
+
             if (e.code === 'Space') { e.preventDefault(); togglePlay(); return; }
             if (e.key === 'Backspace') { e.preventDefault(); if(currentIndex >= 0) playStepAction(currentEvents[currentIndex]); return; }
             if (key === 'l' || key === 'r' || key === 'b') {
@@ -1397,11 +1528,95 @@ const App = () => {
 
     const scoreSectionClass = `layout-transition flex-col bg-white relative shadow-inner overflow-hidden ${mobileView === 'control' ? 'hidden md:flex' : 'flex'} ${tabletLayout === 'control_only' ? 'md:hidden' : (tabletLayout === 'score_only' ? 'md:w-full' : 'md:w-[60%] w-full')}`;
     const controlSectionClass = `layout-transition shrink-0 flex-col bg-slate-800 p-3 md:p-3 gap-3 md:gap-3 border-t md:border-t-0 md:border-l border-slate-700 h-[100dvh] md:h-full overflow-y-auto pb-[env(safe-area-inset-bottom,12px)] md:pb-3 ${mobileView === 'score' ? 'hidden md:flex' : 'flex'} ${tabletLayout === 'score_only' ? 'md:hidden' : (tabletLayout === 'control_only' ? 'md:w-full w-full' : 'md:w-[40%] w-full')}`;
+    
+   // =======================================================
+    // 🌟 ワンクッション：本番前のボイスオーバー警告画面（Gatekeeper）
+    // =======================================================
+    if (showVoiceOverWarning && !isTutorial) {
+        return (
+            <div className="w-full h-[100dvh] bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
+                
+                {/* 魔法の自動読み上げ（そのまま） */}
+                <div 
+                    aria-live="assertive" 
+                    style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: '0' }}
+                >
+                    ボイスオーバーをご利用のかたへ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。練習操作は、ジェスチャー、またはキーボード操作がおすすめです。練習画面上部は、ボタンエリアとなっています。設定変更など操作が必要な時は、ボイスオーバーをオンにして操作してください。
+                </div>
+
+                {/* ======================================= */}
+                {/* 🌟 1. 裏のクリック判定層（透明ボタン） 🌟 */}
+                {/* ======================================= */}
+                
+                {/* 👇 上部 1/4（25%）：音声案内を聞く */}
+                <div 
+                    onClick={() => {
+                        window.speechSynthesis.cancel();
+                        const msg = new SpeechSynthesisUtterance("ボイスオーバーをご利用のかたへ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。練習操作は、ジェスチャー、またはキーボード操作がおすすめです。練習画面上部は、ボタンエリアとなっています。設定変更など操作が必要な時は、ボイスオーバーをオンにして操作してください。");
+                        msg.lang = 'ja-JP'; 
+                        window.speechSynthesis.speak(msg);
+                    }}
+                    aria-hidden="true"
+                    className="absolute top-0 left-0 w-full h-[25%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                />
+
+                {/* 👇 下部 3/4（75%）：次へ進む */}
+                <div 
+                    onClick={() => setShowVoiceOverWarning(false)} 
+                    aria-hidden="true"
+                    className="absolute top-[25%] left-0 w-full h-[75%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                />
+
+                {/* ======================================= */}
+                {/* 🌟 2. 表の見た目層（クリックは裏へ貫通させる） 🌟 */}
+                {/* ======================================= */}
+                
+                {/* 👇 黄色いボタン（上部25%のエリアの中央に配置） */}
+                <div className="absolute top-0 left-0 w-full h-[25%] pointer-events-none z-10 flex items-center justify-center px-6">
+                    <button 
+                        onClick={() => {
+                            window.speechSynthesis.cancel();
+                            const msg = new SpeechSynthesisUtterance("ボイスオーバーをご利用のかたへ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。練習操作は、ジェスチャー、またはキーボード操作がおすすめです。練習画面上部は、ボタンエリアとなっています。設定変更など操作が必要な時は、ボイスオーバーをオンにして操作してください。");
+                            msg.lang = 'ja-JP'; 
+                            window.speechSynthesis.speak(msg);
+                        }}
+                        className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full max-w-sm rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans pointer-events-auto active:scale-95 transition-transform cursor-pointer"
+                    >
+                        🔊 音声案内を聞く
+                    </button>
+                </div>
+
+                {/* 👇 文字列群（画面全体の「ど真ん中」に配置） */}
+                <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center px-6">
+                    <div className="max-w-md space-y-6 w-full text-center">
+                        <h2 className="text-[1.4rem] font-bold text-yellow-400">VoiceOverをご利用のかたへ</h2>
+                        <p className="text-[1.1rem] leading-relaxed font-bold text-slate-200">ここから先の練習画面は、<br/>独自の音声ナビゲーションを使用します。</p>
+                        <div className="bg-slate-800 p-5 rounded-xl border border-slate-600 shadow-lg mx-auto inline-block">
+                            <p className="text-[0.95rem] font-bold leading-relaxed text-slate-300 text-center">
+                                より快適に操作していただくため、<br/>
+                                <span className="text-white border-b-2 border-yellow-400">ここでVoiceOverをオフにしてから</span><br/>
+                                この枠の中を1回タップしてください。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        );
+    }
 
     return (
         <div 
             className={`flex h-[100dvh] w-full overflow-hidden select-none [-webkit-touch-callout:none] ${!showShortcuts ? 'hide-shortcuts' : ''}`}
             onContextMenu={(e) => e.preventDefault()}
+            // 👇 ★ここに追加！！！
+            // PWA特有のゴーストクリックが内部（小節など）に届く前に、ここで捕まえて完全消滅させる魔法
+            onClickCapture={(e) => {
+                if (touchRef.current && touchRef.current.ignoreNextClick) {
+                    e.stopPropagation(); // 内部の要素にクリックを伝えない！
+                    e.preventDefault();  // クリックの動作を完全停止！
+                }
+            }}
         >          
         {/* ================================================= */}
         {/* ★チュートリアル画面（完全版） */}
@@ -1429,50 +1644,93 @@ const App = () => {
 
                 {/* 👇 ステップ0 */}
                 {tutorialStep === 0 && (
-                    <div className="flex flex-col w-full h-full animate-fade-in pointer-events-auto relative">
+                    <div className="w-full h-full bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
+                        
+                        {/* ======================================= */}
+                        {/* 🌟 1. 裏のクリック判定層（透明ボタン） 🌟 */}
+                        {/* ======================================= */}
+                        
+                        {/* 👇 上部 25%：音声案内を聞く */}
                         <div 
                             onClick={() => {
                                 if (!isVoiceEnabled) return;
                                 window.speechSynthesis.cancel();
                                 const msg = new SpeechSynthesisUtterance("ご利用端末をお選びください。");
-                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                                msg.lang = 'ja-JP'; 
+                                window.speechSynthesis.speak(msg);
                             }}
                             aria-hidden="true"
-                            className="absolute top-0 left-0 w-full h-[60%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                            className="absolute top-0 left-0 w-full h-[25%] cursor-pointer active:bg-white/5 transition-colors z-0"
                         />
-                        <div className="w-full flex-1 flex flex-col items-center justify-center px-6 relative z-10 pointer-events-none">
-                            <div className="w-full max-w-sm flex flex-col items-center pointer-events-auto">
-                                <div className="flex justify-start mb-6 w-full">
-                                    <button onClick={(e) => { e.stopPropagation(); handleBackToTop(); }} className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all">
-                                        🏠 ウェルカム画面に戻る
-                                    </button>
-                                </div>
-                                <div className="flex justify-center items-center mb-6 w-full" aria-hidden="true">
-                                    <div className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans">
-                                        🔊 音声案内を聞く
-                                    </div>
-                                </div>
+
+                        {/* ======================================= */}
+                        {/* 🌟 2. 表の見た目層（クリックは裏へ貫通させる） 🌟 */}
+                        {/* ======================================= */}
+                        
+                        {/* 👇 黄色いボタン（上部25%のエリアの中央に配置・実際に押せるように修正！） */}
+                        <div className="absolute top-0 left-0 w-full h-[25%] pointer-events-none z-10 flex items-center justify-center px-6">
+                            <button 
+                                onClick={() => {
+                                    if (!isVoiceEnabled) return;
+                                    window.speechSynthesis.cancel();
+                                    const msg = new SpeechSynthesisUtterance("ご利用端末をお選びください。");
+                                    msg.lang = 'ja-JP'; 
+                                    window.speechSynthesis.speak(msg);
+                                }}
+                                className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full max-w-sm rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans pointer-events-auto active:scale-95 transition-transform cursor-pointer"
+                            >
+                                🔊 音声案内を聞く
+                            </button>
+                        </div>
+
+                        {/* 👇 タイトルと端末選択ボタン（残り75%の下部エリアの「ど真ん中」にバランス良く配置） */}
+                        <div className="absolute top-[25%] left-0 w-full h-[75%] pointer-events-none z-10 flex flex-col items-center justify-center px-6 pb-8">
+                            <div className="max-w-sm w-full flex flex-col items-center gap-8 pointer-events-auto">
+                                
                                 <h2 className="text-[1.4rem] font-bold text-white text-center">ご利用端末をお選びください</h2>
+                                
+                                <div className="w-full flex flex-col gap-4">
+                                    {['smartphone:📱 スマートフォン', 'tablet:📱 タブレット', 'pc:💻 パソコン'].map(item => {
+                                        const [val, label] = item.split(':');
+                                        return (
+                                            <button 
+                                                key={val} 
+                                                onClick={() => { setDeviceType(val); setTutorialStep(1); }} 
+                                                className="bg-[#1e40af] text-white text-[1.2rem] font-bold py-5 px-6 w-full rounded-xl border-none shadow-[0_4px_10px_rgba(37,99,235,0.4)] active:translate-y-1 hover:bg-[#2563eb] transition-all flex justify-center items-center"
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
                             </div>
                         </div>
-                        <div className="w-full pb-12 px-6 flex flex-col items-center relative z-10">
-                            <div className="w-full max-w-sm flex flex-col gap-4">
-                                {['smartphone:📱 スマートフォン', 'tablet:📱 タブレット', 'pc:💻 パソコン'].map(item => {
-                                    const [val, label] = item.split(':');
-                                    return (
-                                        <button key={val} onClick={() => { setDeviceType(val); setTutorialStep(1); }} className="bg-[#1e40af] text-white text-[1.2rem] font-bold py-5 px-6 w-full rounded-xl border-none shadow-[0_4px_10px_rgba(37,99,235,0.4)] active:translate-y-1 hover:bg-[#2563eb] transition-all flex justify-center items-center">
-                                            {label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+
                     </div>
                 )}
 
                 {/* 👇 ステップ1 */}
                 {tutorialStep === 1 && (
-                    <div className="flex flex-col w-full h-full animate-fade-in pointer-events-auto relative">
+                    <div className="w-full h-full bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
+                        
+                        {/* ======================================= */}
+                        {/* 🌟 1. 独立した左上の「戻る」ボタン 🌟 */}
+                        {/* ======================================= */}
+                        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 pointer-events-auto">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setTutorialStep(0); }} 
+                                className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all active:scale-95 cursor-pointer"
+                            >
+                                🔙 端末選択に戻る
+                            </button>
+                        </div>
+
+                        {/* ======================================= */}
+                        {/* 🌟 2. 裏のクリック判定層（透明ボタン） 🌟 */}
+                        {/* ======================================= */}
+                        
+                        {/* 👇 上部 25%：音声案内を聞く */}
                         <div 
                             onClick={() => {
                                 if (!isVoiceEnabled) return;
@@ -1481,93 +1739,136 @@ const App = () => {
                                 msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
                             }}
                             aria-hidden="true"
-                            className="absolute top-0 left-0 w-full h-[60%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                            className="absolute top-0 left-0 w-full h-[25%] cursor-pointer active:bg-white/5 transition-colors z-0"
                         />
-                        <div className="w-full flex-1 flex flex-col items-center justify-center px-6 relative z-10 pointer-events-none">
-                            <div className="w-full max-w-sm flex flex-col items-center pointer-events-auto">
-                                <div className="flex justify-start mb-6 w-full">
-                                    <button onClick={(e) => { e.stopPropagation(); setTutorialStep(0); }} className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all">
-                                        🔙 端末選択に戻る
+
+                        {/* ======================================= */}
+                        {/* 🌟 3. 表の見た目層（クリックは裏へ貫通させる） 🌟 */}
+                        {/* ======================================= */}
+                        
+                        {/* 👇 黄色いボタン（上部25%のエリアに配置・押せるように修正！） */}
+                        <div className="absolute top-0 left-0 w-full h-[25%] pointer-events-none z-10 flex items-end pb-4 justify-center px-6">
+                            <button 
+                                onClick={() => {
+                                    if (!isVoiceEnabled) return;
+                                    window.speechSynthesis.cancel();
+                                    const msg = new SpeechSynthesisUtterance("練習したい操作方法をお選びください。");
+                                    msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                                }}
+                                className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full max-w-sm rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans pointer-events-auto active:scale-95 transition-transform cursor-pointer"
+                            >
+                                🔊 音声案内を聞く
+                            </button>
+                        </div>
+
+                        {/* 👇 タイトルと操作選択ボタン（残り75%の下部エリアの「ど真ん中」にバランス良く配置） */}
+                        <div className="absolute top-[25%] left-0 w-full h-[75%] pointer-events-none z-10 flex flex-col items-center justify-center px-6 pb-8">
+                            <div className="max-w-sm w-full flex flex-col items-center gap-8 pointer-events-auto">
+                                
+                                <h2 className="text-[1.4rem] font-bold text-white text-center">操作方法の選択</h2>
+                                
+                                <div className="w-full flex flex-col gap-4">
+                                    <button onClick={() => { setControlMode('gesture'); setTapMode(false); setTutorialStep(2); }} className="p-4 bg-[#1d4ed8] rounded-xl border-b-4 border-[#1e3a8a] active:translate-y-1 text-left shadow-lg w-full transition-transform cursor-pointer">
+                                        <div className="text-[1.1rem] font-bold text-white mb-1">👆 スワイプ（なぞる）</div>
+                                        <div className="text-[0.8rem] text-blue-200 font-bold">画面をなぞって進みます。VoiceOverオフ推奨</div>
+                                    </button>
+                                    <button onClick={() => { setControlMode('tap'); setTapMode(true); setTutorialStep(2); }} className="p-4 bg-[#db2777] rounded-xl border-b-4 border-[#9d174d] active:translate-y-1 text-left shadow-lg w-full transition-transform cursor-pointer">
+                                        <div className="text-[1.1rem] font-bold text-white mb-1">📱 画面の左右をタップ</div>
+                                        <div className="text-[0.8rem] text-pink-200 font-bold">見えない大ボタンを押します。VoiceOverオフ推奨</div>
+                                    </button>
+                                    <button onClick={() => { setControlMode('button'); setTapMode(false); handleBackToTop(); }} className="p-4 bg-[#334155] rounded-xl border-b-4 border-[#0f172a] active:translate-y-1 text-left shadow-lg w-full transition-transform cursor-pointer">
+                                        <div className="text-[1.1rem] font-bold text-white mb-1">🎛️ パネルのボタン</div>
+                                        <div className="text-[0.8rem] text-slate-300 font-bold">VoiceOverオンのままでOK（最初の画面に戻ります）</div>
                                     </button>
                                 </div>
-                                <div className="flex justify-center items-center mb-6 w-full" aria-hidden="true">
-                                    <div className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans">
-                                        🔊 音声案内を聞く
-                                    </div>
-                                </div>
-                                <h2 className="text-[1.4rem] font-bold text-white text-center">操作方法の選択</h2>
+
                             </div>
                         </div>
-                        <div className="w-full pb-12 px-6 flex flex-col items-center relative z-10">
-                            <div className="w-full max-w-sm flex flex-col gap-4">
-                                <button onClick={() => { setControlMode('gesture'); setTapMode(false); setTutorialStep(2); }} className="p-4 bg-[#1d4ed8] rounded-xl border-b-4 border-[#1e3a8a] active:translate-y-1 text-left shadow-lg w-full transition-transform">
-                                    <div className="text-[1.1rem] font-bold text-white mb-1">👆 スワイプ（なぞる）</div>
-                                    <div className="text-[0.8rem] text-blue-200 font-bold">画面をなぞって進みます。VoiceOverオフ推奨</div>
-                                </button>
-                                <button onClick={() => { setControlMode('tap'); setTapMode(true); setTutorialStep(2); }} className="p-4 bg-[#db2777] rounded-xl border-b-4 border-[#9d174d] active:translate-y-1 text-left shadow-lg w-full transition-transform">
-                                    <div className="text-[1.1rem] font-bold text-white mb-1">📱 画面の左右をタップ</div>
-                                    <div className="text-[0.8rem] text-pink-200 font-bold">見えない大ボタンを押します。VoiceOverオフ推奨</div>
-                                </button>
-                                <button onClick={() => { setControlMode('button'); setTapMode(false); handleBackToTop(); }} className="p-4 bg-[#334155] rounded-xl border-b-4 border-[#0f172a] active:translate-y-1 text-left shadow-lg w-full transition-transform">
-                                    <div className="text-[1.1rem] font-bold text-white mb-1">🎛️ パネルのボタン</div>
-                                    <div className="text-[0.8rem] text-slate-300 font-bold">VoiceOverオンのままでOK（最初の画面に戻ります）</div>
-                                </button>
-                            </div>
-                        </div>
+
                     </div>
                 )}
 
                 {/* 👇 ステップ2 */}
                 {tutorialStep === 2 && (
-                    <div className="flex flex-col w-full h-full animate-fade-in pointer-events-auto relative">
+                    <div className="w-full h-full bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
+                        
+                        {/* ======================================= */}
+                        {/* 🌟 1. 独立した左上の「戻る」ボタン 🌟 */}
+                        {/* ======================================= */}
+                        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 pointer-events-auto">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setTutorialStep(1); }} 
+                                className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all active:scale-95 cursor-pointer"
+                            >
+                                🔙 操作選択に戻る
+                            </button>
+                        </div>
+
+                        {/* ======================================= */}
+                        {/* 🌟 2. 裏のクリック判定層（透明ボタン） 🌟 */}
+                        {/* ======================================= */}
+                        
+                        {/* 👇 上部 25%：音声案内を聞く */}
                         <div 
                             onClick={() => {
                                 if (!isVoiceEnabled) return;
                                 window.speechSynthesis.cancel();
-                                const msg = new SpeechSynthesisUtterance("ボイスオーバーをご利用の方へ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。");
+                                const msg = new SpeechSynthesisUtterance("ボイスオーバーをご利用のかたへ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。");
                                 msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
                             }}
                             aria-hidden="true"
-                            className="absolute top-0 left-0 w-full h-[50%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                            className="absolute top-0 left-0 w-full h-[25%] cursor-pointer active:bg-white/5 transition-colors z-0"
                         />
-                        <div className="w-full flex-1 flex flex-col items-center justify-center px-6 relative z-10 pointer-events-none">
-                            <div className="w-full max-w-sm flex flex-col items-center pointer-events-auto">
-                                <div className="flex justify-start mb-6 w-full">
-                                    <button onClick={(e) => { e.stopPropagation(); setTutorialStep(1); }} className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all">
-                                        🔙 操作選択に戻る
-                                    </button>
-                                </div>
-                                <div className="flex justify-center items-center w-full" aria-hidden="true">
-                                    <div className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans">
-                                        🔊 音声案内を聞く
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="w-full h-full pb-8 px-6 flex flex-col items-center flex-1 relative z-10">
+
+                        {/* 👇 下部 75%：次へ進む */}
+                        <div 
+                            onClick={() => { 
+                                if (controlMode === 'tap') {
+                                    setTutorialStep(2.5); 
+                                    speak("次に、設定画面で画面タップ操作を有効にします。画面中央を1回タップして案内を聴いてください。");
+                                } else {
+                                    setTutorialStep(3); 
+                                    speak("設定しました。まずは再生の練習です。"); 
+                                }
+                            }}
+                            aria-hidden="true"
+                            className="absolute top-[25%] left-0 w-full h-[75%] cursor-pointer active:bg-white/5 transition-colors z-0"
+                        />
+
+                        {/* ======================================= */}
+                        {/* 🌟 3. 表の見た目層（クリックは裏へ貫通させる） 🌟 */}
+                        {/* ======================================= */}
+                        
+                        {/* 👇 黄色いボタン（上部25%のエリアに配置・押せるように修正！） */}
+                        <div className="absolute top-0 left-0 w-full h-[25%] pointer-events-none z-10 flex items-end pb-4 justify-center px-6">
                             <button 
-                                onClick={() => { 
-                                    if (controlMode === 'tap') {
-                                        setTutorialStep(2.5); 
-                                        speak("次に、設定画面で画面タップ操作を有効にします。画面中央を1回タップして案内を聴いてください。");
-                                    } else {
-                                        setTutorialStep(3); 
-                                        speak("設定しました。まずは再生の練習です。"); 
-                                    }
-                                }} 
-                                className="max-w-md space-y-6 w-full text-left"
+                                onClick={() => {
+                                    if (!isVoiceEnabled) return;
+                                    window.speechSynthesis.cancel();
+                                    const msg = new SpeechSynthesisUtterance("ボイスオーバーをご利用のかたへ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。");
+                                    msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                                }}
+                                className="bg-[#facc15] text-[#422006] text-[15px] sm:text-[17px] font-bold py-[12px] px-[20px] w-full max-w-sm rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center whitespace-nowrap font-sans pointer-events-auto active:scale-95 transition-transform cursor-pointer"
                             >
-                                <h2 className="text-[1.4rem] font-bold text-yellow-400 text-center">VoiceOverをご利用の方へ</h2>
-                                <p className="text-[1.1rem] leading-relaxed font-bold text-slate-200 text-center">ここから先の練習画面は、<br/>独自の音声ナビゲーションを使用します。</p>
-                                <div className="bg-slate-800 p-5 rounded-xl border border-slate-600 shadow-lg">
+                                🔊 音声案内を聞く
+                            </button>
+                        </div>
+
+                        {/* 👇 メッセージ群（残り75%の下部エリアの「ど真ん中」にバランス良く配置） */}
+                        <div className="absolute top-[25%] left-0 w-full h-[75%] pointer-events-none z-10 flex flex-col items-center justify-center px-6 pb-8">
+                            <div className="max-w-md space-y-6 w-full text-center">
+                                <h2 className="text-[1.4rem] font-bold text-yellow-400">VoiceOverをご利用のかたへ</h2>
+                                <p className="text-[1.1rem] leading-relaxed font-bold text-slate-200">ここから先の練習画面は、<br/>独自の音声ナビゲーションを使用します。</p>
+                                <div className="bg-slate-800 p-5 rounded-xl border border-slate-600 shadow-lg inline-block w-full">
                                     <p className="text-[0.95rem] font-bold leading-relaxed text-slate-300 text-center">
                                         より快適に操作していただくため、<br/>
                                         <span className="text-white border-b-2 border-yellow-400">ここでVoiceOverをオフにしてから</span><br/>
                                         この枠の中を1回タップしてください。
                                     </p>
                                 </div>
-                            </button>
+                            </div>
                         </div>
+
                     </div>
                 )}
 
@@ -1604,67 +1905,86 @@ const App = () => {
                 {/* 👇 ステップ3〜8 */}
                 {tutorialStep >= 3 && tutorialStep <= 8 && (
                     <>
-                        <div 
-                            onClick={() => {
-                                window.speechSynthesis.cancel();
-                                const tutorialSpeeches = {
-                                    3: "画面をトントンと2回タップして、きらきら星を聞いてみましょう。準備ができたら、もう一度2回タップして止めてください。強制停止は、2本指で長押しです。",
-                                    4: "次は、自分のペースで１音ずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
-                                    5: "素晴らしい！次は1つ前の音に戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
-                                    6: "バッチリです！今の音をもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押しして音を確認できたらクリアです。",
-                                    7: "お見事です！次は小節の移動です。2本指で、画面を左右にスワイプすると小節を移動します。2回スワイプしてみましょう。",
-                                    8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。"
-                                };
-                                const msg = new SpeechSynthesisUtterance(tutorialSpeeches[tutorialStep]);
-                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
-                            }}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            onTouchMove={(e) => e.stopPropagation()}
-                            onTouchEnd={(e) => e.stopPropagation()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="relative w-full pointer-events-auto pt-4 pb-8 px-6 flex flex-col items-center z-50 cursor-pointer active:opacity-70 transition-opacity"
-                        >
+                        {/* 画面全体のタッチは裏に貫通させる設定（pointer-events-none） */}
+                        <div className="absolute top-0 left-0 w-full h-[100dvh] pointer-events-none flex flex-col z-50 overflow-hidden">
+                            
+                            {/* ======================================= */}
+                            {/* 🌟 1. 誤操作を防ぐ「透明なシールド（盾）」 🌟 */}
+                            {/* ======================================= */}
+                            {/* 👇 修正: 画面上部〜小節数のエリア（約38%）のタッチを物理的にブロックし、ぼかしをかけます！ */}
                             <div 
-                                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md -z-10 pointer-events-none"
-                                style={{ WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)', maskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)' }}
+                                className="absolute top-0 left-0 w-full h-[38%] bg-slate-900/80 backdrop-blur-md z-0 pointer-events-auto"
+                                style={{ WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)' }}
+                                onClick={(e) => e.stopPropagation()}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
                             ></div>
 
-                            <div className="w-full max-w-sm flex flex-col gap-3">
-                                <div className="flex justify-between items-center w-full">
-                                    <h3 className="text-yellow-400 font-bold text-sm drop-shadow-md">🎓 練習モード（ステップ {tutorialStep - 2}/6）</h3>
+                            {/* ======================================= */}
+                            {/* 🌟 2. チュートリアルのボタン群 🌟 */}
+                            {/* ======================================= */}
+                            <div className="relative w-full pt-4 pb-4 flex flex-col items-center z-10">
+                                
+                                {/* 👇 修正: 「やめる」を一番右に寄せるため、ここは幅制限なし(w-full)の独立した行にしました！ */}
+                                <div className="w-full px-4 sm:px-6 flex justify-center items-center h-10 mb-2 relative pointer-events-auto">
+                                    <h3 className="text-yellow-400 font-bold text-[1rem] drop-shadow-md z-10">🎓 練習モード（ステップ {tutorialStep - 2}/6）</h3>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); handleBackToTop(); }} 
-                                        className="text-xs bg-slate-700/80 px-3 py-1.5 rounded-lg text-slate-300 font-bold active:scale-95 border border-slate-500 transition-all hover:bg-slate-600"
+                                        className="absolute right-4 sm:right-6 text-xs bg-slate-700/80 px-3 py-1.5 rounded-lg text-slate-300 font-bold active:scale-95 border border-slate-500 transition-all hover:bg-slate-600 z-20 shadow-md cursor-pointer"
                                     >
                                         やめる ✕
                                     </button>
                                 </div>
-                                <div className="w-full">
-                                    <div className="bg-[#facc15] text-[#422006] text-[16px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center">
-                                        🔊 音声案内をもう一度聞く
+
+                                {/* 音声案内などのボタン（ここから下は max-w-sm で中央にキュッとまとめる） */}
+                                <div className="w-full max-w-sm px-4 sm:px-0 flex flex-col gap-3 pointer-events-auto">
+                                    <div className="w-full">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                window.speechSynthesis.cancel();
+                                                const tutorialSpeeches = {
+                                                    3: "画面をトントンと2回タップして、きらきら星を聞いてみましょう。準備ができたら、もう一度2回タップして止めてください。強制停止は、1本指で長押しです。",
+                                                    4: "次は、自分のペースで１おんずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
+                                                    5: "素晴らしい！次は1つ前のおとに戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
+                                                    6: "バッチリです！今のおとをもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押ししておとを確認できたらクリアです。",
+                                                    7: "お見事です！次はしょうせつの移動です。2本指で、画面を左右にスワイプするとしょうせつを移動します。2回スワイプしてみましょう。",
+                                                    8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。"
+                                                };
+                                                const msg = new SpeechSynthesisUtterance(tutorialSpeeches[tutorialStep]);
+                                                msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
+                                            }}
+                                            className="bg-[#facc15] text-[#422006] text-[16px] font-bold py-[12px] px-[20px] w-full rounded-[15px] shadow-[0_4px_6px_rgba(0,0,0,0.2)] flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+                                        >
+                                            🔊 音声案内をもう一度聞く
+                                        </button>
                                     </div>
-                                </div>
-                                <div className="flex justify-between items-center gap-4 w-full">
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); setTutorialStep(prev => Math.max(2, prev - 1)); }} 
-                                        className="flex-1 bg-[rgba(255,255,255,0.15)] text-slate-200 text-[14px] font-bold border border-slate-400/50 rounded-xl py-2 px-3 active:bg-slate-700 transition-all shadow-md"
-                                    >
-                                        🔙 前のステップ
-                                    </button>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); if (tutorialStep === 8) { setTutorialStep(9); } else { setTutorialStep(prev => Math.min(8, prev + 1)); } }} 
-                                        className="flex-1 bg-[rgba(250,204,21,0.2)] text-[#facc15] text-[14px] font-bold border border-[#facc15]/70 rounded-xl py-2 px-3 active:bg-[#facc15] active:text-[#0f172a] transition-all shadow-md"
-                                    >
-                                        次のステップ 🔜
-                                    </button>
+                                    <div className="flex justify-between items-center gap-4 w-full">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); setTutorialStep(prev => Math.max(2, prev - 1)); }} 
+                                            className="flex-1 bg-[rgba(255,255,255,0.15)] text-slate-200 text-[14px] font-bold border border-slate-400/50 rounded-xl py-2 px-3 active:bg-slate-700 transition-all shadow-md cursor-pointer"
+                                        >
+                                            🔙 前のステップ
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); if (tutorialStep === 8) { setTutorialStep(9); } else { setTutorialStep(prev => Math.min(8, prev + 1)); } }} 
+                                            className="flex-1 bg-[rgba(250,204,21,0.2)] text-[#facc15] text-[14px] font-bold border border-[#facc15]/70 rounded-xl py-2 px-3 active:bg-[#facc15] active:text-[#0f172a] transition-all shadow-md cursor-pointer"
+                                        >
+                                            次のステップ 🔜
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex-1 w-full p-4 flex flex-col pointer-events-none z-40 relative -mt-2">
-                                <div className="flex-1 w-full rounded-2xl border-4 border-dashed border-yellow-400/50 bg-yellow-400/5 flex flex-col items-center pt-4 px-4 relative">
-                                    <div className="bg-slate-800/80 backdrop-blur-sm text-yellow-300 px-5 py-2 rounded-full text-[0.95rem] font-bold tracking-widest mb-4 border border-yellow-400/40 shadow-lg">
+                            {/* ======================================= */}
+                            {/* 🌟 3. 下部エリア：操作エリアと説明文 🌟 */}
+                            {/* ======================================= */}
+                            <div className="flex-1 w-full p-2 flex flex-col pointer-events-none relative pb-6 z-10">
+                                <div className="w-full h-full rounded-2xl border-4 border-dashed border-yellow-400/80 bg-yellow-400/5 flex flex-col items-center pt-6 px-4 relative">
+                                    <div className="bg-slate-800/90 backdrop-blur-sm text-yellow-300 px-5 py-2 rounded-full text-[0.95rem] font-bold tracking-widest mb-6 border border-yellow-400/40 shadow-lg">
                                         👐 この枠内のどこを触ってもOK！
                                     </div>
+                                    
                                     <div className="w-full max-w-sm mx-auto pointer-events-none">
                                         {tutorialStep === 3 && (
                                             <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-yellow-400 text-center w-full shadow-2xl animate-fade-in">
@@ -1676,7 +1996,7 @@ const App = () => {
                                                     <span className="text-[1.6rem] font-bold text-red-400">■ 停止</span>
                                                 </div>
                                                 <p className="text-center text-slate-300 font-bold text-[0.85rem] mt-2">💡 曲が最後まで流れたら自動でリトライになります</p>
-                                                <p className="text-center text-pink-400 font-bold text-[0.95rem] mt-3">💡 強制停止は「2本指で画面を長押し」です</p>
+                                                <p className="text-center text-pink-400 font-bold text-[0.95rem] mt-3">💡 強制停止は「1本指で画面を長押し」です</p>
                                             </div>
                                         )}
                                         {tutorialStep === 3.5 && (
@@ -1748,17 +2068,62 @@ const App = () => {
                 )}
 
                 {/* 👇 ステップ9 */}
+                {/* 👇 ステップ9（最後のクリア画面） */}
                 {tutorialStep === 9 && (
-                    <div className="flex flex-col w-full h-full justify-center px-6 animate-fade-in pointer-events-auto">
-                        <div className="bg-slate-800/95 p-8 rounded-3xl border-4 border-yellow-400 shadow-2xl text-center w-full max-w-sm mx-auto">
-                            <h2 className="text-[2.2rem] font-black text-yellow-400 mb-4 drop-shadow-md">🎉 クリア！</h2>
-                            <p className="text-[1.2rem] font-bold text-white mb-8 leading-relaxed">
-                                すべての基本操作を<br/>マスターしました！
+                    <div className="w-full h-[100dvh] bg-slate-900 text-white animate-fade-in relative flex flex-col items-center justify-center px-6 overflow-hidden">
+                        
+                        {/* 開いた瞬間の音声案内 */}
+                        <div 
+                            aria-live="assertive" 
+                            style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: '0' }}
+                        >
+                            すべてのチュートリアルが完了しました。お疲れ様でした。画面中央のボタンを押して、練習アプリに戻ってください。
+                        </div>
+
+                        {/* お祝いメッセージ */}
+                        <div className="flex flex-col items-center z-10 pointer-events-none mb-10">
+                            <h2 className="text-4xl sm:text-5xl font-black text-yellow-400 mb-6 animate-bounce drop-shadow-lg">🎉 クリア！</h2>
+                            <p className="text-[1.2rem] font-bold text-slate-200 text-center leading-relaxed">
+                                チュートリアルはこれで終了です。<br/>
+                                操作方法はバッチリですね！
                             </p>
-                            <button onClick={() => handleBackToTop()} className="bg-[#facc15] text-[#422006] text-[18px] font-bold py-[16px] px-[20px] w-full rounded-2xl shadow-lg border-none active:scale-95 transition-transform">
-                                🏠 ウェルカム画面へ戻る
+                        </div>
+
+                        {/* 帰り道エリア */}
+                        <div className="bg-slate-800 p-6 sm:p-8 rounded-2xl border-2 border-slate-600 shadow-xl w-full max-w-sm text-center z-10 pointer-events-auto">
+                            <p className="text-slate-300 font-bold text-[1rem] mb-6">
+                                下のボタンを押して、<br/>
+                                本番の練習アプリに戻りましょう。
+                            </p>
+                            
+                            {/* 👇 最強の帰り道ボタン */}
+                            <button 
+                                onClick={() => {
+                                    window.speechSynthesis.cancel();
+                                    
+                                    // 1. まずタブを閉じようと試みる（成功すれば裏の本番画面にスッと戻る）
+                                    window.close();
+                                    
+                                    // 2. ブラウザのセキュリティで閉じられなかった場合、0.5秒後に本番URLへジャンプ！
+                                    setTimeout(() => {
+                                        // ⚠️ ここをご自身の本番アプリのURLに書き換えてください！
+                                        window.location.href = "https://voicescore-practice.streamlit.app/"; 
+                                    }, 500);
+                                }}
+                                className="bg-[#1e40af] text-white text-[1.2rem] font-bold py-4 px-6 w-full rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.4)] active:translate-y-1 hover:bg-[#2563eb] transition-all cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                🚀 練習アプリに戻る
                             </button>
                         </div>
+                        
+                        {/* やり直しボタン（控えめに配置） */}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setTutorialStep(0); setTutorialCount(0); }} 
+                            className="mt-8 text-slate-400 font-bold text-sm underline active:text-white z-10 pointer-events-auto cursor-pointer"
+                        >
+                            最初からやり直す
+                        </button>
+
                     </div>
                 )}
 
@@ -1852,6 +2217,8 @@ const App = () => {
                 
                 <div className="space-y-2 pt-4 border-t border-slate-700">
                     <div className="text-xs font-bold text-slate-500 uppercase">Accessibility</div>
+                    
+                    {/* 音声サポートボタン */}
                     <button 
                         onClick={() => {
                             const nextState = !isVoiceEnabled;
@@ -1867,12 +2234,24 @@ const App = () => {
                         <span>音声サポート</span>
                         <span>{isVoiceEnabled ? 'ON' : 'OFF'}</span>
                     </button>
+
+                    {/* 👇 音声サポートと全く同じデザインになった「画面タップ操作」ボタン */}
+                    <button 
+                        onClick={() => setTapMode(!tapMode)}
+                        className={`w-full py-3 rounded-xl font-bold flex flex-col px-4 transition-all ${tapMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-700 text-slate-400'}`}
+                    >
+                        <div className="flex justify-between items-center w-full">
+                            <span>👆 画面タップ操作</span>
+                            <span>{tapMode ? 'ON' : 'OFF'}</span>
+                        </div>
+                        {/* ONの時だけ下に注意書きがスッと現れます */}
+                        {tapMode && (
+                            <div className="text-[11px] text-blue-200 mt-2 text-left leading-tight font-normal">
+                                ※ONにしている間は、スクロールでの小節移動機能（直接タップ）は使えません。
+                            </div>
+                        )}
+                    </button>
                 </div>
-                
-                <label className="flex items-center space-x-2 text-white text-sm p-3 bg-slate-800 rounded-xl border border-slate-600 cursor-pointer transition-all hover:bg-slate-700 active:scale-95 shadow-md">
-                    <input type="checkbox" checked={tapMode} onChange={(e) => setTapMode(e.target.checked)} className="w-5 h-5 accent-pink-500 cursor-pointer" />
-                    <span className="font-bold">👆 画面タップ操作 (左:戻る / 右:進む)</span>
-                </label>
             </div>
         </aside>
         <main className={`flex-1 flex flex-col md:flex-row h-full relative min-w-0 ${!isRightHanded ? 'md:flex-row-reverse' : ''}`}>
@@ -1882,11 +2261,10 @@ const App = () => {
             <section className={scoreSectionClass} aria-hidden={isSettingsOpen && isVoiceEnabled ? "true" : "false"}>
                 <header className={`hidden md:flex bg-slate-900 border-b border-slate-700 flex-col w-full shrink-0 z-20`}>
                     <div className="flex justify-between items-center p-2 md:p-3 min-h-[4rem]">
+                        {/* パソコン用ホームボタン（左上エリア） */}
                         <div className="flex items-center gap-2 w-1/4 pl-1">
-                            {/* 👇 ★新規追加：パソコン用ホームボタン */}
-                            {/* 👇 ★修正：おまかせ仕様にして、確実に戻る！ */}
-                            <button onClick={handleBackToTop} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm hover:bg-gray-500 text-sm flex items-center">
-                                🏠 ホーム
+                            <button onClick={handleBackToTop} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center gap-2">
+                                🏠 ホーム <span className="key-guide-inline">H</span>
                             </button>
                             {/* 👇 パソコン用の設定ボタン（開く/閉じるの切り替え＋アナウンス） */}
                             <button onClick={() => { 
@@ -1907,16 +2285,18 @@ const App = () => {
                                 ガイド <span className="key-guide-inline key-guide-dark ml-1">G</span>
                             </button>                        
                             </div>
-                        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-2">
                             <div className="hidden md:flex flex-col items-center w-full">
                                 <h1 className="text-base lg:text-lg font-black text-green-400 truncate w-full text-center leading-tight">{headerInfo.title || "名称未設定"}</h1>
-                                <div className="text-[10px] lg:text-xs font-bold text-slate-300 flex justify-center flex-wrap gap-x-3 gap-y-1 mt-0.5">
-                                    <span>拍子: {headerInfo.timeSignature?.split('/').reverse().join('分の')}拍子</span><span>調号: {keyDispDict[headerInfo.keySignature || "0"]}</span><span>テンポ: {tempo}%</span>
+                                
+                                <div className="text-[10px] lg:text-xs font-bold text-slate-300 flex justify-center items-center flex-wrap gap-x-3 gap-y-1 mt-0.5">
+                                    <span>拍子: {headerInfo.timeSignature?.split('/').reverse().join('分の')}拍子</span>
+                                    <span>調号: {keyDispDict[headerInfo.keySignature || "0"]}</span>
+                                    {/* 👇 ボタンを消して、元のシンプルな文字表示に戻しました */}
+                                    <span className="text-yellow-400 ml-2">テンポ: {tempo}%</span>
                                 </div>
                             </div>
-                        </div>
                         <div className="flex gap-2 items-center justify-end w-1/4 pr-1">
-                            {/* 👇 賢い切り替えボタンに、アナウンスの魔法を追加！ */}
+                            {/* 👇 ★修正: 3Dデザイン(bg-indigo-600, border-b-4等)と純正ガイドに統一！ */}
                             <button onClick={() => { 
                                 setTabletLayout(prev => {
                                     const nextState = prev === 'split' ? 'score_only' : (prev === 'score_only' ? 'control_only' : 'split');
@@ -1926,8 +2306,9 @@ const App = () => {
                                     else speak("楽譜画面です。");
                                     return nextState;
                                 }); 
-                            }} className="text-slate-300 hover:text-white font-bold py-1 px-3 border border-slate-600 rounded-lg text-xs flex items-center" title="レイアウト切替">
-                                {tabletLayout === 'split' ? '📄 楽譜のみ' : (tabletLayout === 'score_only' ? '🎛️ 操作のみ' : '🌗 左右分割')}<span className="key-guide-inline ml-1 bg-black/40 text-yellow-300 border-yellow-300/50">M</span>
+                            }} className="bg-indigo-600 text-white font-bold py-1.5 px-3 rounded-lg shadow-sm border-b-4 border-indigo-800 active:translate-y-1 active:border-b-0 text-xs md:text-sm flex items-center justify-center gap-2 transition-all" title="レイアウト切替">
+                                {tabletLayout === 'split' ? '📄 楽譜のみ' : (tabletLayout === 'score_only' ? '🎛️ 操作のみ' : '🌗 左右分割')}
+                                <span className="key-guide-inline">M</span>
                             </button>
                         </div>                    
                         </div>
@@ -1937,18 +2318,22 @@ const App = () => {
                     
                     {/* スマホ用ボタン群 */}
                     <div className="md:hidden flex justify-center gap-2 px-3 pb-2">
-                        <button onClick={handleBackToTop} className="flex-1 bg-gray-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ホーム</button>
+                        {/* 👇 ★ホームボタンにも key-guide-inline を追加！ */}
+                        <button onClick={handleBackToTop} className="flex-1 bg-gray-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ホーム <span className="key-guide-inline">H</span></button>
+                        
                         <button onClick={() => { setIsSettingsOpen(true); speak("設定画面です。"); }} className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-green-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">設定 <span className="key-guide-inline">S</span></button>
                         <button onClick={() => { setShowGuide(true); speak("ガイドを開きました。"); }} className="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2 rounded-lg shadow-sm border-b-4 border-yellow-600 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ガイド <span className="key-guide-inline key-guide-dark">G</span></button>
                         <button onClick={() => { setMobileView('control'); speak("操作画面です。"); }} className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-blue-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">操作 <span className="key-guide-inline">M</span></button>
                     </div>
-
-                    {/* 👇 修正版：中央寄せ＆VoiceOver対応のボタンエリア */}
+                    
+                    {/* 👇 修正版：横幅いっぱい＆デザイン統一エリア */}
                     <div className="flex flex-col items-center w-full">
-                        <div className="relative flex flex-col items-center mb-2 px-2 mt-1 w-full max-w-md"> {/* ←中央寄せのためのラッパー */}
+                        <div className="relative flex flex-col items-center mb-2 mt-1 w-full"> {/* ← ★max-w-mdを消して横幅いっぱいに解放！ */}
                             
-                            <div className="w-full flex justify-between gap-2 text-[10px] sm:text-xs font-bold mb-1 px-1">
+                            {/* ★px-3で上のボタン群と左右の余白をピッタリ揃えました */}
+                            <div className="w-full flex justify-between gap-2 px-3 mb-2">
                                 
+                                {/* 左：再生のまとまり切替（青緑・文字サイズをtext-smに統一） */}
                                 <button 
                                     onClick={() => {
                                         const nextMode = blockSize === 1 ? 4 : (blockSize === 4 ? 8 : (blockSize === 8 ? 'all' : 1));
@@ -1956,29 +2341,40 @@ const App = () => {
                                         speak(`まとまりを、${nextMode === 'all' ? '全曲' : nextMode + '小節'}に切り替えました。`);
                                     }}
                                     aria-label={`再生のまとまりを切り替えます。現在は${blockSize === 'all' ? '全曲' : blockSize + '小節'}です`}
-                                    className="flex-1 bg-blue-50 text-blue-600 px-1 py-2 rounded-lg border border-blue-200 active:bg-blue-100 transition-colors shadow-sm"
+                                    // 👇 ★修正: ガイド等と同じ「押し込める3Dデザイン（py-2とborder-b-4）」に統一！
+                                    className="flex-1 bg-teal-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-teal-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center transition-all"
                                 >
                                     {blockSize === 'all' ? '🔄 全曲' : `🎵 ${blockSize}小節`}
+                                    {/* 👇 ★修正: 純正の key-guide-inline を使用！ */}
+                                    <span className="key-guide-inline">A</span>
                                 </button>
 
-                                {/* 中：再生モード切替（「のみ」対応の完全連動版） */}
+                                {/* 中：再生モード切替（紫・文字サイズをtext-smに統一） */}
                                 <button 
                                     onClick={() => {
-                                        // 設定画面に合わせて「①音名のみ」→「②音名と音価」→「③演奏」の順に切り替えます
                                         const nextPlayMode = playMode === "①音名のみ" ? "②音名と音価" : (playMode === "②音名と音価" ? "③演奏" : "①音名のみ");
-                                        if(playing) stopPlayback(); // 再生中なら安全に止める処理
+                                        if(playing) stopPlayback(); 
                                         setPlayMode(nextPlayMode);
                                         
-                                        // ①②③の数字を削って綺麗に喋らせる
-                                        const speakText = nextPlayMode.replace(/①|②|③/g, "").replace("のみ", "");
+                                        let speakText = "";
+                                        if (nextPlayMode === "①音名のみ") {
+                                            speakText = "おんめい";
+                                        } else if (nextPlayMode === "②音名と音価") {
+                                            speakText = "おんめいとおんか";
+                                        } else if (nextPlayMode === "③演奏") {
+                                            speakText = "えんそう";
+                                        }
+                                        
                                         speak(`再生モードを、${speakText}に切り替えました。`);
                                     }}
                                     aria-label={`再生モードを切り替えます。現在は${playMode.replace(/①|②|③/g, "")}です`}
-                                    className="flex-1 bg-purple-50 text-purple-600 px-1 py-2 rounded-lg border border-purple-200 active:bg-purple-100 transition-colors shadow-sm"
+                                    className="flex-1 bg-purple-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-purple-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center transition-all"
                                 >
                                     {playMode === "①音名のみ" ? '🎵 音名' : (playMode === "②音名と音価" ? '⏱️ 音名+音価' : '🎹 演奏')}
+                                    <span className="key-guide-inline">P</span>
                                 </button>
-                                
+
+                                {/* 右：パート切替（濃いピンク・文字サイズをtext-smに統一） */}
                                 <button 
                                     onClick={() => {
                                         const nextPart = part === "右手" ? "左手" : (part === "左手" ? "両手" : "右手");
@@ -1986,32 +2382,56 @@ const App = () => {
                                         speak(`パートを、${nextPart}に切り替えました。`);
                                     }}
                                     aria-label={`パートを切り替えます。現在のパートは${part}です`}
-                                    className="flex-1 bg-orange-50 text-orange-600 px-1 py-2 rounded-lg border border-orange-200 active:bg-orange-100 transition-colors shadow-sm"
+                                    className="flex-1 bg-rose-500 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-rose-700 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center transition-all"
                                 >
                                     ✋ {part}
+                                    <span className="key-guide-inline">R/L/B</span>
                                 </button>
                             </div>
 
-                            {/* 小節番号表示エリア */}
-                            <div className="flex flex-col items-center justify-center mt-1">
-                                <div className="flex items-end justify-center gap-2">
-                                    <span className="text-4xl font-black text-blue-900 leading-none">
-                                        {measure === 0 ? "曲情報" : (playing && activeMeasure ? activeMeasure : (measureMap[measure] || (enrichedEvents?.find(e => e.m === measure)?.originalM) || measure))}
-                                    </span>
-                                    {measure !== 0 && <span className="text-sm font-bold text-blue-800 pb-1">小節目</span>}
-                                    
-                                    {playing && measure !== 0 && (
-                                        <span className="text-sm md:text-base font-black text-red-600 pb-1 ml-2 animate-pulse">
-                                            ▶ 再生中
+                            {/* 小節番号 ＆ スピード調整 エリア（横並びで省スペース化！） */}
+                            <div className="grid grid-cols-3 w-full px-2 mt-1 items-center">
+                                {/* 左側：バランスを取るための空箱 */}
+                                <div></div>
+
+                                {/* 中央：小節番号（元のコードそのまま） */}
+                                <div className="flex flex-col items-center justify-center">
+                                    <div className="flex items-end justify-center gap-2">
+                                        <span className="text-4xl font-black text-blue-900 leading-none">
+                                            {measure === 0 ? "曲情報" : (playing && activeMeasure ? activeMeasure : (measureMap[measure] || (enrichedEvents?.find(e => e.m === measure)?.originalM) || measure))}
                                         </span>
+                                        {measure !== 0 && <span className="text-sm font-bold text-blue-800 pb-1">小節目</span>}
+                                        
+                                        {playing && measure !== 0 && (
+                                            <span className="text-sm md:text-base font-black text-red-600 pb-1 ml-2 animate-pulse">
+                                                ▶ 再生中
+                                            </span>
+                                        )}
+                                    </div>
+                                    
+                                    {measure !== 0 && (
+                                        <div className="text-[10px] text-slate-400 font-bold mt-1">
+                                            （通算: {measure} / {maxMeasure}）
+                                        </div>
                                     )}
                                 </div>
-                                
-                                {measure !== 0 && (
-                                    <div className="text-[10px] text-slate-400 font-bold mt-1">
-                                        （通算: {measure} / {maxMeasure}）
+
+                                {/* 右側：コンパクトになったスピード調整パネル（パソコンでも表示！） */}
+                                {/* 👇 md:hidden を外して、パソコン画面ではボタンを少し大きく(md:w-8など)しました */}
+                                <div className="flex flex-col items-end justify-center pr-1 md:pr-4">
+                                    <span className="text-[10px] md:text-xs font-bold text-slate-500 mb-0.5 mr-1">スピード</span>
+                                    <div className="flex items-center bg-white rounded-full p-0.5 md:p-1 shadow-sm border border-slate-200">
+                                        <button 
+                                            onClick={() => { const t = Math.max(50, tempo - 5); setTempo(t); speak(`${t}パーセント`); }} 
+                                            className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-full font-black text-sm md:text-base active:scale-90 transition-transform cursor-pointer"
+                                        >－</button>
+                                        <span className="w-9 md:w-14 text-center font-black text-slate-700 text-xs md:text-sm">{tempo}%</span>
+                                        <button 
+                                            onClick={() => { const t = Math.min(150, tempo + 5); setTempo(t); speak(`${t}パーセント`); }} 
+                                            className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-full font-black text-sm md:text-base active:scale-90 transition-transform cursor-pointer"
+                                        >＋</button>
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2022,7 +2442,7 @@ const App = () => {
                     </div>
                 </div>
 
-<div id="score-container" aria-hidden="true" className="flex-1 overflow-y-auto p-2 bg-slate-50 hide-scrollbar relative text-black" onClick={handleScoreClick} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onContextMenu={(e) => e.preventDefault()}>                    {measure === 0 ? (
+                <div id="score-container" aria-hidden="true" className="flex-1 overflow-y-auto p-2 bg-slate-50 hide-scrollbar relative text-black touch-manipulation" onClick={handleScoreClick} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onContextMenu={(e) => e.preventDefault()}> {measure === 0 ? (                     
                         <div className="flex flex-col items-center justify-start pt-6 pb-32 px-4 text-center h-full overflow-y-auto pointer-events-auto">
                             <div className="text-4xl mb-3 animate-bounce pointer-events-none">🎵</div>
                             <h2 className="text-xl md:text-3xl font-black text-slate-800 mb-4 pointer-events-none">{headerInfo.title || "名称未設定"}</h2>
@@ -2053,8 +2473,38 @@ const App = () => {
                                             </div>
                                         )}
 
-                                        <div id={`card-${ev.uniqueId}`} className={`relative p-3 rounded-xl border-2 transition-all scroll-m-20 ${highlightId===ev.uniqueId?'bg-blue-50 border-blue-500 scale-[1.02] shadow-md':'bg-white border-slate-200 shadow-sm'}`}>
-                                            <div className="grid grid-cols-[50px_1fr_1fr] gap-3 items-center pointer-events-none">
+                                            <div 
+                                                id={`card-${ev.uniqueId}`} 
+                                                onClick={(e) => {
+                                                    // ⭕ 1. 画面タップモードの時は無視（大ボタンとのケンカ防止）
+                                                    if (tapMode) return;
+                                                    
+                                                    // ⭕ 2. ダブルタップの2回目が来たら、必ずタイマーを止めて終了！
+                                                    if (clickTimerRef.current) {
+                                                        clearTimeout(clickTimerRef.current);
+                                                        clickTimerRef.current = null;
+                                                        return;
+                                                    }
+                                                    
+                                                    e.stopPropagation();
+
+                                                    // ⭕ 3. 1回目のタップを記録して、350ミリ秒だけ待つ
+                                                    clickTimerRef.current = setTimeout(() => {
+                                                        clickTimerRef.current = null;
+                                                        
+                                                        // playing ではなく playingRef.current を使うことで、完全に最新の状態を見抜けます。
+                                                        if (playingRef.current) return;
+                                                        
+                                                        setMeasure(ev.m);
+                                                        setHighlightId(ev.uniqueId);
+                                                        
+                                                        // 👇 ★ここを修正！！！ 古い speak を消して、最強のおしゃべり係に「通し番号(ev.m)」を渡す！
+                                                        speakMeasureInfo(ev.m);
+                                                        
+                                                    }, 350);
+                                                }}    
+                                                className={`relative p-3 rounded-xl border-2 transition-all scroll-m-20 cursor-pointer ${highlightId===ev.uniqueId?'bg-blue-50 border-blue-500 scale-[1.02] shadow-md':'bg-white border-slate-200 shadow-sm'}`}
+                                            >                                                <div className="grid grid-cols-[50px_1fr_1fr] gap-3 items-center pointer-events-none">
                                                 <div className={`text-lg font-black border-r-2 text-center pr-2 ${highlightId===ev.uniqueId?'border-blue-200 text-blue-600':'text-slate-400 border-slate-100'}`}>{ev.displayBeat} 拍</div>
                                                 <div className={`flex justify-center ${(part==="左手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_l, ev.relL, octaveMode, dict, playMode)} playMode={playMode} isLeft={true} /></div>
                                                 <div className={`flex justify-center ${(part==="右手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_r, ev.relR, octaveMode, dict, playMode)} playMode={playMode} isLeft={false} /></div>
@@ -2074,7 +2524,7 @@ const App = () => {
                 </div>
 
                 <div className="hidden md:block w-full px-6 pb-4 pt-2 bg-slate-100 border-t border-slate-200 shrink-0 text-black" aria-hidden="true">
-                    <div className="flex justify-between text-[10px] px-1 text-slate-500 font-bold mb-1"><label htmlFor="measure-slider">スライドまたはテンキー数字で開始小節を移動 (0で曲情報)</label></div>
+                    <div className="flex justify-between text-[10px] px-1 text-slate-500 font-bold mb-1"><label htmlFor="measure-slider">スライドまたは、テンキー数字入力で開始小節を移動 (0で曲情報)</label></div>
                     <input type="range" id="measure-slider" className="w-full cursor-pointer" min="0" max={maxMeasure} value={measure} 
                     onChange={e => {
                         if (playing) stopPlayback(); 
@@ -2110,7 +2560,7 @@ const App = () => {
                 </button>                <div className="flex flex-col gap-3">
                     {extraControlsJSX}
                     <div className="md:hidden w-full px-2 text-slate-300 mt-1">
-                        <div className="flex justify-between text-[10px] px-1 text-slate-400 font-bold mb-1"><label>スライドで開始小節を移動 (0で曲情報)</label></div>
+                        <div className="flex justify-between text-[10px] px-1 text-slate-400 font-bold mb-1"><label>スライドまたは、テンキーで小節番号を入力して小節移動 (0で曲情報)</label></div>
                         <input type="range" className="w-full cursor-pointer" min="0" max={maxMeasure} value={measure} 
                         onChange={e => {
                             if (playing) stopPlayback(); 
@@ -2124,8 +2574,10 @@ const App = () => {
 
                 <div className="grid grid-cols-3 gap-2 flex-1 min-h-[180px]">
                     <div></div>
-                    <button id="btn-up" onClick={()=>playStepAction(currentEvents[Math.max(0, currentIndex-1)])} className="btn-large h-full py-1 bg-blue-700 text-white border-b-4 border-blue-900">
-                        <span className="key-guide hidden md:block">↑</span><span className="text-xl">⬆️</span><span className="text-[11px] font-bold">1音戻る</span>
+                    <button id="btn-up" onClick={()=>playStepAction(currentEvents[Math.max(0, currentIndex-1)])} className="btn-large h-full py-1 bg-blue-700 text-white border-b-4 border-blue-900 relative flex flex-col items-center justify-center">
+                        {/* 👇 hidden md:block を削除しました！ */}
+                        <span className="key-guide-inline absolute top-1 right-1 text-[10px] leading-none px-1">↑</span>
+                        <span className="text-xl">⬆️</span><span className="text-[11px] font-bold">1音戻る</span>
                     </button>
                     <div></div>
                     
@@ -2134,16 +2586,20 @@ const App = () => {
                         const step = (measure === 1) ? 1 : (blockSize === 'all' ? 1 : blockSize); 
                         setMeasure(m=>{ 
                             const prevM = Math.max(0, m - step); 
-                            speakMeasureInfo(prevM); // 👈 超スッキリ！
+                            speakMeasureInfo(prevM);
                             return prevM; 
                         }); 
                         setHighlightId(null);
-                    }} className="btn-large h-full py-1 bg-slate-700 text-white border-b-4 border-slate-900">
-                        <span className="key-guide hidden md:block">←</span><span className="text-2xl">⬅️</span><span className="text-[11px] font-bold">前の小節</span>
+                    }} className="btn-large h-full py-1 bg-slate-700 text-white border-b-4 border-slate-900 relative flex flex-col items-center justify-center">
+                        {/* 👇 hidden md:block を削除！ */}
+                        <span className="key-guide-inline absolute top-1 right-1 text-[10px] leading-none px-1">←</span>
+                        <span className="text-2xl">⬅️</span><span className="text-[11px] font-bold">前の小節</span>
                     </button>
                     
                     <button id="btn-replay" onClick={()=>{announce(setAnnounceText, "もう一度読み上げます"); playStepAction(currentEvents[currentIndex >= 0 ? currentIndex : 0]);}} className="flex flex-col items-center justify-center bg-indigo-900 rounded-2xl border-2 border-indigo-400 text-indigo-100 relative shadow-inner active:scale-95 transition-all cursor-pointer">
-                        <span className="key-guide text-[8px] hidden md:block" style={{top:'2px',right:'2px'}}>BS</span><span className="text-2xl mb-1">🔄</span><span className="text-[11px] font-bold">もう一度</span>
+                        {/* 👇 hidden md:block を削除！ */}
+                        <span className="key-guide-inline absolute top-1 right-1 text-[10px] leading-none px-1">BS</span>
+                        <span className="text-2xl mb-1">🔄</span><span className="text-[11px] font-bold">もう一度</span>
                     </button>
                     
                     <button id="btn-right" onClick={()=>{
@@ -2151,24 +2607,29 @@ const App = () => {
                         const step = (measure === 0) ? 1 : (blockSize === 'all' ? 1 : blockSize); 
                         setMeasure(m=>{ 
                             const nextM = Math.min(maxMeasure, m + step); 
-                            speakMeasureInfo(nextM); // 👈 超スッキリ！
+                            speakMeasureInfo(nextM);
                             return nextM; 
                         }); 
                         setHighlightId(null);
-                    }} className="btn-large h-full py-1 bg-slate-700 text-white border-b-4 border-slate-900">
-                        <span className="key-guide hidden md:block">→</span><span className="text-2xl">➡️</span><span className="text-[11px] font-bold">次の小節</span>
+                    }} className="btn-large h-full py-1 bg-slate-700 text-white border-b-4 border-slate-900 relative flex flex-col items-center justify-center">
+                        {/* 👇 hidden md:block を削除！ */}
+                        <span className="key-guide-inline absolute top-1 right-1 text-[10px] leading-none px-1">→</span>
+                        <span className="text-2xl">➡️</span><span className="text-[11px] font-bold">次の小節</span>
                     </button>
                     
                     <div></div>
-                    <button id="btn-down" onClick={()=>playStepAction(currentEvents[Math.min(currentEvents.length-1, currentIndex+1)])} className="btn-large h-full py-1 bg-blue-700 text-white border-b-4 border-blue-900">
-                        <span className="key-guide hidden md:block">↓</span><span className="text-xl">⬇️</span><span className="text-[11px] font-bold">1音進む</span>
+                    <button id="btn-down" onClick={()=>playStepAction(currentEvents[Math.min(currentEvents.length-1, currentIndex+1)])} className="btn-large h-full py-1 bg-blue-700 text-white border-b-4 border-blue-900 relative flex flex-col items-center justify-center">
+                        {/* 👇 hidden md:block を削除！ */}
+                        <span className="key-guide-inline absolute top-1 right-1 text-[10px] leading-none px-1">↓</span>
+                        <span className="text-xl">⬇️</span><span className="text-[11px] font-bold">1音進む</span>
                     </button>
                     <div></div>
                 </div>
 
                 <div className="shrink-0 mt-1 md:mt-auto">
                     <button onClick={togglePlay} className={`w-full h-16 md:h-20 rounded-2xl flex items-center justify-center gap-3 text-xl md:text-2xl font-black shadow-lg border-b-8 active:translate-y-2 transition-all relative ${playing?'bg-red-600 border-red-800':'bg-green-600 border-green-800'}`}>
-                        <span className="key-guide hidden md:block" style={{top:'4px'}}>Space</span>
+                        {/* 👇 hidden md:block を削除！スマホでもSpaceキー表示が出ます */}
+                        <span className="key-guide-inline absolute top-2 right-3 text-sm">Space</span>
                         {isPianoLoading ? <span className="animate-pulse">🎹 音源準備中...</span> : (playing?'⏹️ 停止':'▶️ 再生')}
                     </button>
                 </div>
@@ -2177,7 +2638,7 @@ const App = () => {
 
         {showGuide && (
             <div role="dialog" aria-modal="true" aria-label="操作ガイド" className="fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-[95%] max-w-md bg-slate-800/95 backdrop-blur border border-slate-600 rounded-xl shadow-2xl z-[60] p-4 text-slate-200 text-xs">
-                <div className="sr-only">操作ガイドを開きました。ジェスチャー操作：1本指の左右スワイプで1音移動。2本指の左右スワイプで小節移動。3本指スワイプでモード切替。画面の長押しでもう一度読み上げ。ダブルタップで再生と停止。右上の閉じるボタンでこのガイドを非表示にできます。</div>
+                <div className="sr-only">操作ガイドを開きました。ジェスチャー操作：1本指の左右スワイプで1おん移動。2本指の左右スワイプで小節移動。3本指スワイプでモード切替。画面の長押しでもう一度読み上げ。ダブルタップで再生と停止。右上の閉じるボタンでこのガイドを非表示にできます。</div>
                 <button onClick={() => setShowGuide(false)} aria-label="ガイドを閉じる" className="absolute -top-3 -right-3 w-8 h-8 bg-slate-700 rounded-full border border-slate-500 flex items-center justify-center text-white shadow-lg text-sm font-black">✕</button>
                 <div className="font-black text-blue-400 mb-2 text-center text-sm tracking-wide" aria-hidden="true">💡 操作ガイド</div>
                 <div className="grid grid-cols-2 gap-4" aria-hidden="true">
