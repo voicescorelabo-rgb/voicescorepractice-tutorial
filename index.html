@@ -256,16 +256,85 @@ const playSynthNote = (audioCtx, midi, time, volBalance, duration = 1.6, isLeft 
     activeOscs.push(osc); 
 };
 const App = () => {
+    // ==========================================
+    // 🌟 プロ仕様：設定の記憶（localStorage）と初期化 🌟
+    // ==========================================
+
+    // 1. チュートリアルかどうか（別リンクからの指示を100%尊重する！）
+    const [isTutorial, setIsTutorial] = useState(() => {
+        return window.IS_TUTORIAL === true;
+    });
+
+    // 2. ボイスオーバー警告画面を出すかどうか
+    const [showVoiceOverWarning, setShowVoiceOverWarning] = useState(() => {
+        // チュートリアルの時は出さない。本編（エリーゼなど）の時は必ず出す！
+        return window.IS_TUTORIAL !== true; 
+    });
+
+    // 3. 端末タイプ（スマホかPCか）の記憶
+    const [deviceType, setDeviceType] = useState(() => {
+        return localStorage.getItem('voiceScore_deviceType') || null;
+    });
+
+    // 4. 操作モード（スワイプかタップかボタンか）の記憶
+    const [controlMode, setControlMode] = useState(() => {
+        return localStorage.getItem('voiceScore_controlMode') || 'gesture';
+    });
+
+    const [tapMode, setTapMode] = useState(() => {
+        return localStorage.getItem('voiceScore_tapMode') === 'true';
+    });
+
+    const [part, setPart] = useState(() => {
+        return localStorage.getItem('voiceScore_part') || "両手";
+    });
+    
+    const [playMode, setPlayMode] = useState(() => {
+        return localStorage.getItem('voiceScore_playMode') || "③演奏";
+    });
+
+    const [blockSize, setBlockSize] = useState(() => {
+        return localStorage.getItem('voiceScore_blockSize') || 'all';
+    });
+
+    // --- 既存の（記憶しない）状態管理 ---
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
-    // 👇 こう書き換えます
     const [showShortcuts, setShowShortcuts] = useState(true); 
     const [isRightHanded, setIsRightHanded] = useState(true);
     const [mobileView, setMobileView] = useState('score');
-    // 👈 ★修正：タブレットのデフォルトを「楽譜のみ」に
     const [tabletLayout, setTabletLayout] = useState('score_only');
-    // 👈 ★追加：音声サポートの状態（Pythonからの設定を引き継ぐ）
     const [isVoiceEnabled, setIsVoiceEnabled] = useState(window.VOICE_SUPPORT === true);
+    
+    const [tutorialStep, setTutorialStep] = useState(0);
+    const [tutorialCount, setTutorialCount] = useState(0);
+
+    // ==========================================
+    // 🌟 自動セーブ機能（useEffect） 🌟
+    // ==========================================
+    useEffect(() => {
+        if (!isTutorial) {
+            localStorage.setItem('voiceScore_tutorialCompleted', 'true');
+        }
+    }, [isTutorial]);
+
+    useEffect(() => {
+        if (deviceType) localStorage.setItem('voiceScore_deviceType', deviceType);
+        localStorage.setItem('voiceScore_controlMode', controlMode);
+        localStorage.setItem('voiceScore_tapMode', String(tapMode));
+    }, [deviceType, controlMode, tapMode]);
+
+    useEffect(() => {
+        localStorage.setItem('voiceScore_part', part);
+        localStorage.setItem('voiceScore_playMode', playMode);
+        localStorage.setItem('voiceScore_blockSize', String(blockSize));
+    }, [part, playMode, blockSize]);
+// 4. 曲の名前と、現在いる小節（場所）を常にメモする（しおりを挟む機能）
+    useEffect(() => {
+        const currentSong = window.APP_DATA?.header?.title || window.APP_DATA?.header?.id || "unknown";
+        localStorage.setItem('voiceScore_lastSong', currentSong);
+        localStorage.setItem('voiceScore_lastMeasure', measure.toString());
+    }, [measure]);
     // ==========================================
     // 👇 修正：iPhone対策 ＋ 喋り終わるまで待つ ＋ ブラウザの「物忘れバグ」対策！
     // ==========================================
@@ -324,13 +393,31 @@ const App = () => {
     const [useCountIn, setUseCountIn] = useState(true);
     const [volBalance, setVolumeBalance] = useState(50);
     // 警告画面を表示するかどうかのスイッチ（最初は true = 表示する）
-    const [showVoiceOverWarning, setShowVoiceOverWarning] = useState(true);
+    //const [showVoiceOverWarning, setShowVoiceOverWarning] = useState(true);
     // 👇 デフォルト設定を「両手」「演奏モード」「全曲通し」に変更しました！
-    const [part, setPart] = useState("両手");
-    const [playMode, setPlayMode] = useState("③演奏"); // 下のボタンのコードに合わせて "③演奏" にします
+    //const [part, setPart] = useState("両手");
+    //const [playMode, setPlayMode] = useState("③演奏"); // 下のボタンのコードに合わせて "③演奏" にします
     const [octaveMode, setOctaveMode] = useState("③中央ド（オリジナル）");
-    const [measure, setMeasure] = useState(0);
-    const [blockSize, setBlockSize] = useState('all'); // 全曲通しをデフォルトに
+    // ==========================================
+    // 🌟 プロ仕様：前回練習していた「曲」と「場所」を復元する！ 🌟
+    // ==========================================
+    const [measure, setMeasure] = useState(() => {
+        // 1. 今開こうとしている曲の名前を取得
+        const currentSong = window.APP_DATA?.header?.title || window.APP_DATA?.header?.id || "unknown";
+        
+        // 2. 引き出しにしまってある「最後に練習した曲」と「最後の小節」を確認
+        const savedSong = localStorage.getItem('voiceScore_lastSong');
+        
+        // 3. もし「前回と同じ曲」を開いたなら、前回の続きの小節からスタート！
+        if (savedSong === currentSong) {
+            const savedMeasure = parseInt(localStorage.getItem('voiceScore_lastMeasure'), 10);
+            return !isNaN(savedMeasure) ? savedMeasure : 0;
+        }
+        
+        // 4. 違う曲を開いた場合は、最初（0）からスタート
+        return 0;
+    });
+    //const [blockSize, setBlockSize] = useState('all'); // 全曲通しをデフォルトに
         // ==========================================
     // 👇 スピードアップ魔法：小節番号の「早見表」を超・強化！
     // ==========================================
@@ -409,13 +496,14 @@ const App = () => {
     const [playing, setPlaying] = useState(false);
     const [highlightId, setHighlightId] = useState(null);
     const [activeMeasure, setActiveMeasure] = useState(null);
-    const [tapMode, setTapMode] = useState(false);
+    //const [tapMode, setTapMode] = useState(false);
 
     // --- ★ここからチュートリアル用の状態管理（重複を消して1回だけに整理！） ---
-    const [isTutorial, setIsTutorial] = useState(window.IS_TUTORIAL === true);    const [tutorialStep, setTutorialStep] = useState(0);
-    const [controlMode, setControlMode] = useState(null); 
-    const [deviceType, setDeviceType] = useState(null); 
-    const [tutorialCount, setTutorialCount] = useState(0);
+    //const [isTutorial, setIsTutorial] = useState(window.IS_TUTORIAL === true);    
+    //const [tutorialStep, setTutorialStep] = useState(0);
+    //const [controlMode, setControlMode] = useState(null); 
+    //const [deviceType, setDeviceType] = useState(null); 
+    //const [tutorialCount, setTutorialCount] = useState(0);
     const tutorialStateRef = useRef({ step: 0, count: 0, active: true });
     useEffect(() => {
         tutorialStateRef.current = { step: tutorialStep, count: tutorialCount, active: isTutorial };
@@ -1662,6 +1750,22 @@ const App = () => {
             </div>
         );
     }
+    
+    
+        {/* 【チュートリアル画面の設計図】
+            Step 0: 端末選択（スマホ？PC？）
+            Step 1: 操作方法選択（スワイプ？タップ？キーボード？）
+            Step 2:【ジェスチャー①】 ボイスオーバーオフにしてください案内画面
+            Step2.5:【スマホ/タップ選択①】設定から画面タップ操作をオンに切り替え（これから作る🚧）
+            Step 3: 【ジェスチャー②】再生・停止
+            Step3.5:【スマホ/タップ選択②】（これから作る🚧）
+            Step 4: 【ジェスチャー③】次の音へ進む
+            step5:【ジェスチャー④】前の音に戻る
+            step6:【ジェスチャー⑤】もう一度聞く
+            step7:【ジェスチャー⑥】小節移動
+            step8:【ジェスチャー⑦】画面切り替え
+            step9:【ジェスチャー➇】クリア
+        */}
     // 👇 開発中だけ true にする秘密のスイッチ（本番は false にして蓋をする！）
     const isDevMode = false;
 
@@ -1706,6 +1810,21 @@ const App = () => {
                 {tutorialStep === 0 && (
                     <div className="w-full h-full bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
                         
+                        {/* 👇 ★追加：チュートリアルを閉じて本編へ戻るボタン */}
+                        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 pointer-events-auto">
+                            <button 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setIsTutorial(false); // チュートリアルを終了して本編へ！
+                                    window.speechSynthesis.cancel();
+                                    speak("練習画面に進みます。");
+                                }} 
+                                className="bg-[rgba(255,255,255,0.15)] text-slate-200 text-[14px] font-bold border-[1.5px] border-slate-400 rounded-full py-1.5 px-4 hover:bg-slate-700 hover:text-white transition-all active:scale-95 cursor-pointer"
+                            >
+                                ✖ 閉じる
+                            </button>
+                        </div>
+
                         {/* ======================================= */}
                         {/* 🌟 1. 裏のクリック判定層（透明ボタン） 🌟 */}
                         {/* ======================================= */}
