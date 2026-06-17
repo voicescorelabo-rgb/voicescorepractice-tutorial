@@ -7,10 +7,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>VoiceScore Practice Pro</title>
     
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 👇 ★修正：Reactを 18.2.0 に完全固定！ -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- 👇 Babelは先ほど修正した 7.23.8 で完璧です！ -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.8/babel.min.js"></script>
+    
+    <!-- 👇 ★修正：Tailwind CSS を 3.4.3 に完全固定！ -->
+    <script src="https://cdn.tailwindcss.com/3.4.3"></script>
+    
+    <!-- 👇 soundfont-player は最初から 0.10.9 に固定されていて完璧です！ -->
     <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.10.9/dist/soundfont-player.min.js"></script>
     
     <style>
@@ -699,18 +706,36 @@ const App = () => {
     // 👇 監視対象に showVoiceOverWarning を追加します
     }, [isTutorial, showVoiceOverWarning]);
 
-    const handleBackToTop = async () => {
+    const handleBackToTop = () => {
         if (playing) stopPlayback();
-        
-        // 喋り終わるのをしっかり待つ
-        await speak("最初の画面に戻ります。");
+        window.speechSynthesis.cancel();
 
-        // 👇 修正：身代わりボタンを押すのをやめて、アプリ全体(親画面)を確実にリロードして初期化する！
-        try {
-            window.parent.location.reload();
-        } catch (e) {
-            window.location.reload(); // 念のためのセーフティネット
-        }
+        const msg = new SpeechSynthesisUtterance("曲選択画面に戻ります。");
+        msg.lang = 'ja-JP';
+
+        const goBackToSelect = () => {
+            // 1. スキップ魔法が誤爆しないように記憶を消去
+            localStorage.removeItem('voiceScore_lastSong');
+            try { window.parent.localStorage.removeItem('voiceScore_lastSong'); } catch(e){}
+
+            // 2. 先生がPythonで作った「HiddenBackBtn」を裏でこっそり押す！
+            const doc = window.parent.document;
+            const btns = Array.from(doc.querySelectorAll('button'));
+            const backBtn = btns.find(b => b.innerText.includes('HiddenBackBtn'));
+
+            if (backBtn) {
+                // ボタンが見つかったらクリック！これで安全にPython側の go_to_upload が動きます
+                backBtn.click();
+            } else {
+                // 万が一ボタンが見つからなかった時のためのセーフティネット
+                window.parent.location.reload();
+            }
+        };
+
+        msg.onend = goBackToSelect;
+        setTimeout(goBackToSelect, 2500);
+
+        window.speechSynthesis.speak(msg);
     };
     
     const handleDownloadPDF = () => {
@@ -1682,13 +1707,7 @@ const App = () => {
         return (
             <div className="w-full h-[100dvh] bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
                 
-                {/* 魔法の自動読み上げ（そのまま） */}
-                <div 
-                    aria-live="assertive" 
-                    style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: '0' }}
-                >
-                    ボイスオーバーをご利用のかたへ。ここから先の練習画面は独自の音声ナビゲーションを使用します。より快適に操作していただくため、ここでボイスオーバーをオフにしてから、画面の下半分を1回タップして次に進んでください。練習操作は、ジェスチャー、またはキーボード操作がおすすめです。練習画面上部は、ボタンエリアとなっています。設定変更など操作が必要な時は、ボイスオーバーをオンにして操作してください。
-                </div>
+                
 
                 {/* ======================================= */}
                 {/* 🌟 1. 裏のクリック判定層（透明ボタン） 🌟 */}
@@ -2404,10 +2423,12 @@ const App = () => {
                 <button onClick={() => { setIsSettingsOpen(false); speak("楽譜画面です。"); }} className="text-slate-400 font-bold p-2 hover:bg-slate-700 rounded-lg">✕</button>
             </div>
             
-            <div className="space-y-4 overflow-y-auto pb-10 w-72 mt-4">
+            <div className="space-y-4 overflow-y-auto pb-32 w-72 mt-4 h-full">
                 <div className="flex gap-2 bg-slate-800 p-2 rounded-xl border border-slate-600">
-                    <button onClick={handleBackToTop} className="flex-1 p-2 bg-yellow-400 font-bold rounded-lg text-sm hover:bg-yellow-300 text-yellow-900 shadow">🔙 別の曲</button>
-                    <button onClick={handleDownloadPDF} className="flex-1 p-2 bg-blue-600 font-bold rounded-lg text-sm hover:bg-blue-500 text-white shadow">🖨️ PDF</button>
+                <button onClick={handleBackToTop} className="flex-1 p-2 bg-yellow-400 font-bold rounded-lg text-sm hover:bg-yellow-300 text-yellow-900 shadow">
+                    🔙 曲を選ぶ
+                </button>                    
+                <button onClick={handleDownloadPDF} className="flex-1 p-2 bg-blue-600 font-bold rounded-lg text-sm hover:bg-blue-500 text-white shadow">🖨️ PDF</button>
                 </div>
 
                 <a href="https://docs.google.com/forms/d/e/1FAIpQLScTGTu-CmBbUgqoeoEnQ4SCroWadSsFKIma6dCNgeKeI0gCiA/viewform?usp=header" target="_blank" rel="noopener noreferrer" className="block w-full p-2.5 bg-pink-600 font-bold rounded-lg text-sm hover:bg-pink-500 text-white shadow-md text-center border border-pink-700 active:scale-95 transition-all">
@@ -2494,6 +2515,17 @@ const App = () => {
                         )}
                     </button>
                 </div>
+                {/* 👇 ★ここから追加：チュートリアルボタン */}
+                <div className="pt-4 mt-4 border-t border-slate-600">
+                    <a 
+                        href="https://voicescorelabo-rgb.github.io/voicescorepractice-tutorial/" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all active:scale-95"
+                    >
+                        <span className="text-xl">🔰</span> 使い方・チュートリアル
+                    </a>
+                </div>
             </div>
         </aside>
         <main className={`flex-1 flex flex-col md:flex-row h-full relative min-w-0 ${!isRightHanded ? 'md:flex-row-reverse' : ''}`}>
@@ -2507,9 +2539,9 @@ const App = () => {
                         
                         {/* 👇 左上エリア（ホーム・設定・ガイド）: w-1/4を外し、shrink-0でボタンが潰れないように保護 */}
                         <div className="flex flex-wrap items-center gap-1.5 shrink-0 relative z-[60]">
-                            <button onClick={handleBackToTop} className="bg-gray-600 text-white font-bold py-1.5 px-3 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-xs md:text-sm flex items-center justify-center gap-1.5 transition-all">
-                                🏠 ホーム <span className="key-guide-inline">H</span>
-                            </button>
+                        <button onClick={handleBackToTop} className="bg-gray-600 text-white font-bold py-1.5 px-3 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-xs md:text-sm flex items-center justify-center gap-1.5 transition-all">
+                            📁 曲選択 <span className="key-guide-inline">H</span>
+                        </button>
                             {/* 設定とガイドのボタンも、ホームと同じ3Dデザイン(py-1.5, border-b-4)に統一してスッキリさせました！ */}
                             <button onClick={() => { 
                                 setIsSettingsOpen(prev => {
@@ -2565,8 +2597,9 @@ const App = () => {
                     {/* スマホ用ボタン群 */}
                     <div className="md:hidden flex justify-center gap-2 px-3 pb-2">
                         {/* 👇 ★ホームボタンにも key-guide-inline を追加！ */}
-                        <button onClick={handleBackToTop} className="flex-1 bg-gray-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ホーム <span className="key-guide-inline">H</span></button>
-                        
+                        <button onClick={handleBackToTop} className="flex-1 bg-gray-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-gray-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">
+                            曲選択 <span className="key-guide-inline">H</span>
+                        </button>                        
                         <button onClick={() => { setIsSettingsOpen(true); speak("設定画面です。"); }} className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-green-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">設定 <span className="key-guide-inline">S</span></button>
                         <button onClick={() => { setShowGuide(true); speak("ガイドを開きました。"); }} className="flex-1 bg-yellow-400 text-yellow-900 font-bold py-2 rounded-lg shadow-sm border-b-4 border-yellow-600 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">ガイド <span className="key-guide-inline key-guide-dark">G</span></button>
                         <button onClick={() => { setMobileView('control'); speak("操作画面です。"); }} className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-blue-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center">操作 <span className="key-guide-inline">M</span></button>
@@ -2577,63 +2610,7 @@ const App = () => {
                         <div className="relative flex flex-col items-center mb-2 mt-1 w-full"> {/* ← ★max-w-mdを消して横幅いっぱいに解放！ */}
                             
                             {/* ★px-3で上のボタン群と左右の余白をピッタリ揃えました */}
-                            <div className="w-full flex justify-between gap-2 px-3 mb-2">
-                                
-                                {/* 左：再生のまとまり切替（青緑・文字サイズをtext-smに統一） */}
-                                <button 
-                                    onClick={() => {
-                                        const nextMode = blockSize === 1 ? 4 : (blockSize === 4 ? 8 : (blockSize === 8 ? 'all' : 1));
-                                        setBlockSize(nextMode);
-                                        speak(`まとまりを、${nextMode === 'all' ? '全曲' : nextMode + '小節'}に切り替えました。`);
-                                    }}
-                                    aria-label={`再生のまとまりを切り替えます。現在は${blockSize === 'all' ? '全曲' : blockSize + '小節'}です`}
-                                    // 👇 ★修正: ガイド等と同じ「押し込める3Dデザイン（py-2とborder-b-4）」に統一！
-                                    className="flex-1 bg-teal-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-teal-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center transition-all"
-                                >
-                                    {blockSize === 'all' ? '🔄 全曲' : `🎵 ${blockSize}小節`}
-                                    {/* 👇 ★修正: 純正の key-guide-inline を使用！ */}
-                                    <span className="key-guide-inline">A</span>
-                                </button>
-
-                                {/* 中：再生モード切替（紫・文字サイズをtext-smに統一） */}
-                                <button 
-                                    onClick={() => {
-                                        const nextPlayMode = playMode === "①音名のみ" ? "②音名と音価" : (playMode === "②音名と音価" ? "③演奏" : "①音名のみ");
-                                        if(playing) stopPlayback(); 
-                                        setPlayMode(nextPlayMode);
-                                        
-                                        let speakText = "";
-                                        if (nextPlayMode === "①音名のみ") {
-                                            speakText = "おんめい";
-                                        } else if (nextPlayMode === "②音名と音価") {
-                                            speakText = "おんめいとおんか";
-                                        } else if (nextPlayMode === "③演奏") {
-                                            speakText = "えんそう";
-                                        }
-                                        
-                                        speak(`再生モードを、${speakText}に切り替えました。`);
-                                    }}
-                                    aria-label={`再生モードを切り替えます。現在は${playMode.replace(/①|②|③/g, "")}です`}
-                                    className="flex-1 bg-purple-600 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-purple-800 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center transition-all"
-                                >
-                                    {playMode === "①音名のみ" ? '🎵 音名' : (playMode === "②音名と音価" ? '⏱️ 音名+音価' : '🎹 演奏')}
-                                    <span className="key-guide-inline">P</span>
-                                </button>
-
-                                {/* 右：パート切替（濃いピンク・文字サイズをtext-smに統一） */}
-                                <button 
-                                    onClick={() => {
-                                        const nextPart = part === "右手" ? "左手" : (part === "左手" ? "両手" : "右手");
-                                        setPart(nextPart);
-                                        speak(`パートを、${nextPart}に切り替えました。`);
-                                    }}
-                                    aria-label={`パートを切り替えます。現在のパートは${part}です`}
-                                    className="flex-1 bg-rose-500 text-white font-bold py-2 rounded-lg shadow-sm border-b-4 border-rose-700 active:translate-y-1 active:border-b-0 text-sm flex items-center justify-center transition-all"
-                                >
-                                    ✋ {part}
-                                    <span className="key-guide-inline">R/L/B</span>
-                                </button>
-                            </div>
+                            
 
                             {/* 小節番号 ＆ スピード調整 エリア（横並びで省スペース化！） */}
                             <div className="grid grid-cols-3 w-full px-2 mt-1 items-center">
@@ -2723,99 +2700,182 @@ const App = () => {
                         <div className="text-center border-r border-blue-300 pr-2">拍</div><div className="text-center">左手 (L)</div><div className="text-center">右手 (R)</div>
                     </div>
                 </div>
+                {/* 👆 ★修正：余分な </div> ではなく、正しくヘッダーを閉じます */}
 
-                <div id="score-container" aria-hidden="true" className="flex-1 overflow-y-auto p-2 bg-slate-50 hide-scrollbar relative text-black touch-manipulation" onClick={handleScoreClick} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onContextMenu={(e) => e.preventDefault()}> {measure === 0 ? (                     
-                        <div className="flex flex-col items-center justify-start pt-6 pb-32 px-4 text-center h-full overflow-y-auto pointer-events-auto">
-                            <div className="text-4xl mb-3 animate-bounce pointer-events-none">🎵</div>
-                            <h2 className="text-xl md:text-3xl font-black text-slate-800 mb-4 pointer-events-none">{headerInfo.title || "名称未設定"}</h2>
-                            <div className="bg-white border-2 border-slate-200 p-4 rounded-2xl shadow-sm space-y-2 text-left w-full max-w-sm pointer-events-auto">
-                                <p className="font-bold text-slate-600">拍子: <span className="text-slate-800 text-lg">{headerInfo.timeSignature?.split('/').reverse().join('分の')}拍子</span></p>
-                                <p className="font-bold text-slate-600">調号: <span className="text-slate-800 text-lg">{keyDispDict[headerInfo.keySignature || "0"]}</span></p>
-                                <p className="font-bold text-slate-600">テンポ: <span className="text-slate-800 text-lg">{headerInfo.tempo ? `4分音符 = ${headerInfo.tempo} BPM` : "指定なし"}</span></p>
-                                <p className="font-bold text-yellow-600 mt-4 border-t pt-4">▶ 最初の音: <span className="text-slate-800 text-lg block mt-1">{firstPitchDispText}</span></p>
+                {/* スクロールバーを消すCSS（絶対にエラーにならない安全記法版） */}
+                <style dangerouslySetInnerHTML={{__html: "#score-container { scrollbar-width: none; -ms-overflow-style: none; } #score-container::-webkit-scrollbar { display: none !important; }"}} />
+
+                {/* 👇 ★魔法のラッパー（これではみ出しません） */}
+                <div className="relative flex-1 w-full flex overflow-hidden">
+
+                    {/* 👇 先生の元の score-container */}
+                    <div id="score-container" aria-hidden="true" className="flex-1 overflow-y-auto p-2 bg-slate-50 relative text-black touch-manipulation" onClick={handleScoreClick} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onContextMenu={(e) => e.preventDefault()}> 
+                        {measure === 0 ? (                     
+                            <div className="flex flex-col items-center justify-start pt-6 pb-32 px-4 text-center h-full overflow-y-auto pointer-events-auto">
+                                <div className="text-4xl mb-3 animate-bounce pointer-events-none">🎵</div>
+                                <h2 className="text-xl md:text-3xl font-black text-slate-800 mb-4 pointer-events-none">{headerInfo.title || "名称未設定"}</h2>
+                                <div className="bg-white border-2 border-slate-200 p-4 rounded-2xl shadow-sm space-y-2 text-left w-full max-w-sm pointer-events-auto">
+                                    <p className="font-bold text-slate-600">拍子: <span className="text-slate-800 text-lg">{headerInfo.timeSignature?.split('/').reverse().join('分の')}拍子</span></p>
+                                    <p className="font-bold text-slate-600">調号: <span className="text-slate-800 text-lg">{keyDispDict[headerInfo.keySignature || "0"]}</span></p>
+                                    <p className="font-bold text-slate-600">テンポ: <span className="text-slate-800 text-lg">{headerInfo.tempo ? `4分音符 = ${headerInfo.tempo} BPM` : "指定なし"}</span></p>
+                                    <p className="font-bold text-yellow-600 mt-4 border-t pt-4">▶ 最初の音: <span className="text-slate-800 text-lg block mt-1">{firstPitchDispText}</span></p>
+                                </div>
+                                <div className="mt-5 flex flex-col items-center gap-2 pointer-events-none">
+                                    <p className="text-sm font-black text-blue-600 bg-blue-100 px-4 py-2 rounded-full border border-blue-200 shadow-sm">▶️ ダブルタップで再生スタート</p>
+                                    <div className="anim-tap opacity-80 mt-1">👆👆</div>
+                                </div>
                             </div>
-                            <div className="mt-5 flex flex-col items-center gap-2 pointer-events-none">
-                                <p className="text-sm font-black text-blue-600 bg-blue-100 px-4 py-2 rounded-full border border-blue-200 shadow-sm">▶️ ダブルタップで再生スタート</p>
-                                <div className="anim-tap opacity-80 mt-1">👆👆</div>
+                        ) : (
+                            <div className="space-y-2 pb-6 px-1">
+                                {currentEvents.map((ev, idx) => {
+                                    const isNewMeasure = idx === 0 || currentEvents[idx-1].originalM !== ev.originalM;
+                                    const startDirs = (ev.allDirs || []).filter(d => ["repeat_start", "ending_1", "ending_2", "1.", "2.", "Coda", "Segno"].includes(d));
+                                    const endDirs = (ev.allDirs || []).filter(d => ["repeat_end", "D.C.", "D.S.", "Fine", "to Coda"].includes(d));
+
+                                    return (
+                                        <React.Fragment key={ev.uniqueId}>
+                                            {isNewMeasure && (<div className="text-center text-xs font-bold text-slate-400 my-2 mt-4 bg-slate-200 py-1 rounded-full w-24 mx-auto border border-slate-300 shadow-sm pointer-events-none">第 {ev.originalM} 小節</div>)}
+                                            {startDirs.length > 0 && (
+                                                <div className="flex justify-center my-2 pointer-events-none">
+                                                    {startDirs.map((d, di) => (<div key={`sd-${di}`} className="bg-yellow-300 text-yellow-900 px-4 py-1.5 rounded-lg shadow-sm font-black text-sm border-2 border-yellow-400 flex items-center gap-2"><span>▶</span> {dict.DIRECTIONS[d]?.disp || d}</div>))}
+                                                </div>
+                                            )}
+
+                                                <div 
+                                                    id={`card-${ev.uniqueId}`} 
+                                                    onClick={(e) => {
+                                                        if (tapMode) return;
+                                                        if (clickTimerRef.current) {
+                                                            clearTimeout(clickTimerRef.current);
+                                                            clickTimerRef.current = null;
+                                                            return;
+                                                        }
+                                                        e.stopPropagation();
+                                                        clickTimerRef.current = setTimeout(() => {
+                                                            clickTimerRef.current = null;
+                                                            if (playingRef.current) return;
+                                                            setMeasure(ev.m);
+                                                            setHighlightId(ev.uniqueId);
+                                                            speakMeasureInfo(ev.m);
+                                                        }, 350);
+                                                    }}    
+                                                    className={`relative p-3 rounded-xl border-2 transition-all scroll-m-20 cursor-pointer ${highlightId===ev.uniqueId?'bg-blue-50 border-blue-500 scale-[1.02] shadow-md':'bg-white border-slate-200 shadow-sm'}`}
+                                                >                                                <div className="grid grid-cols-[50px_1fr_1fr] gap-3 items-center pointer-events-none">
+                                                    <div className={`text-lg font-black border-r-2 text-center pr-2 ${highlightId===ev.uniqueId?'border-blue-200 text-blue-600':'text-slate-400 border-slate-100'}`}>{ev.displayBeat} 拍</div>
+                                                    <div className={`flex justify-center ${(part==="左手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_l, ev.relL, octaveMode, dict, playMode)} playMode={playMode} isLeft={true} /></div>
+                                                    <div className={`flex justify-center ${(part==="右手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_r, ev.relR, octaveMode, dict, playMode)} playMode={playMode} isLeft={false} /></div>
+                                                </div>
+                                            </div>
+                                            
+                                            {endDirs.length > 0 && (
+                                                <div className="flex justify-center my-2 pointer-events-none">
+                                                    {endDirs.map((d, di) => (<div key={`ed-${di}`} className="bg-yellow-300 text-yellow-900 px-4 py-1.5 rounded-lg shadow-sm font-black text-sm border-2 border-yellow-400 flex items-center gap-2"><span>↩️</span> {dict.DIRECTIONS[d]?.disp || d}</div>))}
+                                                </div>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-2 pb-6 px-1">
-                            {currentEvents.map((ev, idx) => {
-                                const isNewMeasure = idx === 0 || currentEvents[idx-1].originalM !== ev.originalM;
-                                const startDirs = (ev.allDirs || []).filter(d => ["repeat_start", "ending_1", "ending_2", "1.", "2.", "Coda", "Segno"].includes(d));
-                                const endDirs = (ev.allDirs || []).filter(d => ["repeat_end", "D.C.", "D.S.", "Fine", "to Coda"].includes(d));
+                        )}
+                    </div>
+                    {/* 👆 score-container はここで閉じる */}
 
-                                return (
-                                    <React.Fragment key={ev.uniqueId}>
-                                        {isNewMeasure && (<div className="text-center text-xs font-bold text-slate-400 my-2 mt-4 bg-slate-200 py-1 rounded-full w-24 mx-auto border border-slate-300 shadow-sm pointer-events-none">第 {ev.originalM} 小節</div>)}
-                                        {startDirs.length > 0 && (
-                                            <div className="flex justify-center my-2 pointer-events-none">
-                                                {startDirs.map((d, di) => (<div key={`sd-${di}`} className="bg-yellow-300 text-yellow-900 px-4 py-1.5 rounded-lg shadow-sm font-black text-sm border-2 border-yellow-400 flex items-center gap-2"><span>▶</span> {dict.DIRECTIONS[d]?.disp || d}</div>))}
-                                            </div>
-                                        )}
-
-                                            <div 
-                                                id={`card-${ev.uniqueId}`} 
-                                                onClick={(e) => {
-                                                    // ⭕ 1. 画面タップモードの時は無視（大ボタンとのケンカ防止）
-                                                    if (tapMode) return;
-                                                    
-                                                    // ⭕ 2. ダブルタップの2回目が来たら、必ずタイマーを止めて終了！
-                                                    if (clickTimerRef.current) {
-                                                        clearTimeout(clickTimerRef.current);
-                                                        clickTimerRef.current = null;
-                                                        return;
-                                                    }
-                                                    
-                                                    e.stopPropagation();
-
-                                                    // ⭕ 3. 1回目のタップを記録して、350ミリ秒だけ待つ
-                                                    clickTimerRef.current = setTimeout(() => {
-                                                        clickTimerRef.current = null;
-                                                        
-                                                        // playing ではなく playingRef.current を使うことで、完全に最新の状態を見抜けます。
-                                                        if (playingRef.current) return;
-                                                        
-                                                        setMeasure(ev.m);
-                                                        setHighlightId(ev.uniqueId);
-                                                        
-                                                        // 👇 ★ここを修正！！！ 古い speak を消して、最強のおしゃべり係に「通し番号(ev.m)」を渡す！
-                                                        speakMeasureInfo(ev.m);
-                                                        
-                                                    }, 350);
-                                                }}    
-                                                className={`relative p-3 rounded-xl border-2 transition-all scroll-m-20 cursor-pointer ${highlightId===ev.uniqueId?'bg-blue-50 border-blue-500 scale-[1.02] shadow-md':'bg-white border-slate-200 shadow-sm'}`}
-                                            >                                                <div className="grid grid-cols-[50px_1fr_1fr] gap-3 items-center pointer-events-none">
-                                                <div className={`text-lg font-black border-r-2 text-center pr-2 ${highlightId===ev.uniqueId?'border-blue-200 text-blue-600':'text-slate-400 border-slate-100'}`}>{ev.displayBeat} 拍</div>
-                                                <div className={`flex justify-center ${(part==="左手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_l, ev.relL, octaveMode, dict, playMode)} playMode={playMode} isLeft={true} /></div>
-                                                <div className={`flex justify-center ${(part==="右手"||part==="両手")?'opacity-100':'opacity-20'}`}><CardDisplay info={parseMusicData(ev.raw_r, ev.relR, octaveMode, dict, playMode)} playMode={playMode} isLeft={false} /></div>
-                                            </div>
-                                        </div>
-                                        
-                                        {endDirs.length > 0 && (
-                                            <div className="flex justify-center my-2 pointer-events-none">
-                                                {endDirs.map((d, di) => (<div key={`ed-${di}`} className="bg-yellow-300 text-yellow-900 px-4 py-1.5 rounded-lg shadow-sm font-black text-sm border-2 border-yellow-400 flex items-center gap-2"><span>↩️</span> {dict.DIRECTIONS[d]?.disp || d}</div>))}
-                                            </div>
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })}
+                    {/* ======================================= */}
+                    {/* 🌟 1. 画面右端の「縦型スクロールバー（上下反転・クッキリ版）」 🌟 */}
+                    {/* ======================================= */}
+                    {typeof maxMeasure !== 'undefined' && maxMeasure > 0 && (
+                        <div className="absolute right-0 md:right-2 top-2 bottom-2 w-10 md:w-12 flex justify-center z-40 pointer-events-none">
+                            <input 
+                                type="range"
+                                min="0"
+                                max={maxMeasure}
+                                value={measure}
+                                orient="vertical"
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    setMeasure(val);
+                                    if (typeof speakMeasureInfo === 'function') speakMeasureInfo(val);
+                                }}
+                                className="pointer-events-auto cursor-pointer"
+                                style={{
+                                    WebkitAppearance: 'slider-vertical',
+                                    width: '28px',
+                                    height: '100%',
+                                    accentColor: '#3b82f6',
+                                    background: '#ffffff',
+                                    border: '2px solid #cbd5e1',
+                                    borderRadius: '14px',
+                                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                                    transform: 'rotate(180deg)',
+                                    margin: 0,
+                                    padding: 0,
+                                }}
+                                aria-label={`小節を移動します`}
+                            />
                         </div>
                     )}
-                </div>
 
-                <div className="hidden md:block w-full px-6 pb-4 pt-2 bg-slate-100 border-t border-slate-200 shrink-0 text-black" aria-hidden="true">
-                    <div className="flex justify-between text-[10px] px-1 text-slate-500 font-bold mb-1"><label htmlFor="measure-slider">スライドまたは、テンキー数字入力で開始小節を移動 (0で曲情報)</label></div>
-                    <input type="range" id="measure-slider" className="w-full cursor-pointer" min="0" max={maxMeasure} value={measure} 
-                    onChange={e => {
-                        if (playing) stopPlayback(); 
-                        const val = Number(e.target.value); 
-                        setMeasure(val); 
-                        setHighlightId(null);
-                        speakMeasureInfo(val); // 👈 超スッキリ！
-                    }} />
                 </div>
+                {/* 👆 ★魔法のラッパーここまで！ */}
+
+                {/* ======================================= */}
+                {/* 🌟 2. 移設した「2段目のボタン群（画面下部に固定）」 🌟 */}
+                {/* ======================================= */}
+                <div className="w-full bg-slate-900 border-t border-slate-700 p-2 pb-6 md:pb-3 shrink-0 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.2)]">
+                    <div className="w-full flex justify-between gap-2 px-1 max-w-[600px] mx-auto">
+                        
+                        {/* 左：再生のまとまり切替 */}
+                        <button 
+                            onClick={() => {
+                                const nextMode = blockSize === 1 ? 4 : (blockSize === 4 ? 8 : (blockSize === 8 ? 'all' : 1));
+                                setBlockSize(nextMode);
+                                speak(`まとまりを、${nextMode === 'all' ? '全曲' : nextMode + '小節'}に切り替えました。`);
+                            }}
+                            aria-label={`再生のまとまりを切り替えます。現在は${blockSize === 'all' ? '全曲' : blockSize + '小節'}です`}
+                            className="flex-1 bg-teal-600 text-white font-bold py-3 rounded-xl shadow-md border-b-4 border-teal-800 active:translate-y-1 active:border-b-0 text-sm md:text-base flex items-center justify-center transition-all"
+                        >
+                            {blockSize === 'all' ? '🔄 全曲' : `🎵 ${blockSize}小節`}
+                            <span className="key-guide-inline ml-1 hidden sm:inline">A</span>
+                        </button>
+
+                        {/* 中：再生モード切替 */}
+                        <button 
+                            onClick={() => {
+                                const nextPlayMode = playMode === "①音名のみ" ? "②音名と音価" : (playMode === "②音名と音価" ? "③演奏" : "①音名のみ");
+                                if(playing) stopPlayback(); 
+                                setPlayMode(nextPlayMode);
+                                
+                                let speakText = "";
+                                if (nextPlayMode === "①音名のみ") speakText = "おんめい";
+                                else if (nextPlayMode === "②音名と音価") speakText = "おんめいとおんか";
+                                else if (nextPlayMode === "③演奏") speakText = "えんそう";
+                                
+                                speak(`再生モードを、${speakText}に切り替えました。`);
+                            }}
+                            aria-label={`再生モードを切り替えます。現在は${playMode.replace(/①|②|③/g, "")}です`}
+                            className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl shadow-md border-b-4 border-purple-800 active:translate-y-1 active:border-b-0 text-sm md:text-base flex items-center justify-center transition-all"
+                        >
+                            {playMode === "①音名のみ" ? '🎵 音名' : (playMode === "②音名と音価" ? '⏱️ 音名+音価' : '🎹 演奏')}
+                            <span className="key-guide-inline ml-1 hidden sm:inline">P</span>
+                        </button>
+
+                        {/* 右：パート切替 */}
+                        <button 
+                            onClick={() => {
+                                const nextPart = part === "右手" ? "左手" : (part === "左手" ? "両手" : "右手");
+                                setPart(nextPart);
+                                speak(`パートを、${nextPart}に切り替えました。`);
+                            }}
+                            aria-label={`パートを切り替えます。現在のパートは${part}です`}
+                            className="flex-1 bg-rose-500 text-white font-bold py-3 rounded-xl shadow-md border-b-4 border-rose-700 active:translate-y-1 active:border-b-0 text-sm md:text-base flex items-center justify-center transition-all"
+                        >
+                            ✋ {part}
+                            <span className="key-guide-inline ml-1 hidden sm:inline">R/L/B</span>
+                        </button>
+
+                    </div>
+                </div>
+                
             </section>
 
             <section className={controlSectionClass} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
