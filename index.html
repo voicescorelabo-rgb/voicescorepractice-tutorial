@@ -1085,10 +1085,6 @@ const App = () => {
             t.ignoreNextClick = true;
             setTimeout(() => { if(touchRef.current) touchRef.current.ignoreNextClick = false; }, 400);
 
-            if (t.maxTouches === 2) {
-                if (isTutorial && tutorialStep !== 8) return;
-                handleScreenCycle();
-            }
         }
         
         // 2. １本指タップ / ダブルタップの判定
@@ -1829,18 +1825,18 @@ const App = () => {
                 {tutorialStep === 0 && (
                     <div className="w-full h-full bg-slate-900 text-white animate-fade-in relative select-none overflow-hidden">
                         
-                        {/* 👇 ★追加：チュートリアルを閉じて本編へ戻るボタン */}
+                        {/* 👇 ★修正：全画面共通の「練習アプリに戻る」ボタンに変更 */}
                         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 pointer-events-auto">
                             <button 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    setIsTutorial(false); // チュートリアルを終了して本編へ！
                                     window.speechSynthesis.cancel();
-                                    speak("練習画面に進みます。");
+                                    window.close();
+                                    setTimeout(() => { window.location.href = "https://voicescore-practice.streamlit.app/"; }, 500);
                                 }} 
-                                className="bg-[rgba(255,255,255,0.15)] text-slate-200 text-[14px] font-bold border-[1.5px] border-slate-400 rounded-full py-1.5 px-4 hover:bg-slate-700 hover:text-white transition-all active:scale-95 cursor-pointer"
+                                className="bg-[#1e40af] text-white text-[14px] font-bold border border-[#3b82f6] rounded-full py-1.5 px-4 hover:bg-[#2563eb] transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-[0_4px_10px_rgba(37,99,235,0.4)]"
                             >
-                                ✖ 閉じる
+                                🚀 練習アプリに戻る
                             </button>
                         </div>
 
@@ -1936,10 +1932,15 @@ const App = () => {
                         {/* ======================================= */}
                         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 pointer-events-auto">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); setTutorialStep(0); }} 
-                                className="bg-[rgba(250,204,21,0.15)] text-[#facc15] text-[14px] font-bold border-[1.5px] border-[#facc15] rounded-full py-1.5 px-4 hover:bg-[#facc15] hover:text-[#0f172a] transition-all active:scale-95 cursor-pointer"
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    window.speechSynthesis.cancel();
+                                    window.close();
+                                    setTimeout(() => { window.location.href = "https://voicescore-practice.streamlit.app/"; }, 500);
+                                }} 
+                                className="bg-[#1e40af] text-white text-[14px] font-bold border border-[#3b82f6] rounded-full py-1.5 px-4 hover:bg-[#2563eb] transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-[0_4px_10px_rgba(37,99,235,0.4)]"
                             >
-                                🔙 端末選択に戻る
+                                🚀 練習アプリに戻る
                             </button>
                         </div>
 
@@ -2163,8 +2164,8 @@ const App = () => {
                     </div>
                 )}
 
-                {/* 👇 ステップ3〜8 */}
-                {tutorialStep >= 3 && tutorialStep <= 8 && (
+                {/* 👇 ステップ3〜7 (※上限を8から7に変更しました！) */}
+                {tutorialStep >= 3 && tutorialStep <= 7 && (
                     <>
                         {/* 画面全体のタッチは裏に貫通させる設定（pointer-events-none） */}
                         <div className="absolute top-0 left-0 w-full h-[100dvh] pointer-events-none flex flex-col z-50 overflow-hidden">
@@ -2188,12 +2189,17 @@ const App = () => {
                                 
                                 {/* 👇 修正: 「やめる」を一番右に寄せるため、ここは幅制限なし(w-full)の独立した行にしました！ */}
                                 <div className="w-full px-4 sm:px-6 flex justify-center items-center h-10 mb-2 relative pointer-events-auto">
-                                    <h3 className="text-yellow-400 font-bold text-[1rem] drop-shadow-md z-10">🎓 練習モード（ステップ {tutorialStep - 2}/6）</h3>
+                                    <h3 className="text-yellow-400 font-bold text-[1rem] drop-shadow-md z-10">🎓 練習モード（ステップ {tutorialStep - 2}/5）</h3>
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); handleBackToTop(); }} 
-                                        className="absolute right-4 sm:right-6 text-xs bg-slate-700/80 px-3 py-1.5 rounded-lg text-slate-300 font-bold active:scale-95 border border-slate-500 transition-all hover:bg-slate-600 z-20 shadow-md cursor-pointer"
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            window.speechSynthesis.cancel();
+                                            window.close();
+                                            setTimeout(() => { window.location.href = "https://voicescore-practice.streamlit.app/"; }, 500);
+                                        }} 
+                                        className="absolute right-4 sm:right-6 text-xs bg-[#1e40af] px-3 py-1.5 rounded-lg text-white font-bold active:scale-95 border border-[#3b82f6] transition-all hover:bg-[#2563eb] z-20 shadow-[0_4px_10px_rgba(37,99,235,0.4)] cursor-pointer flex items-center gap-1"
                                     >
-                                        やめる ✕
+                                        🚀 練習アプリに戻る
                                     </button>
                                 </div>
 
@@ -2210,7 +2216,6 @@ const App = () => {
                                                     5: "素晴らしい！次は1つ前のおとに戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
                                                     6: "バッチリです！今のおとをもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押ししておとを確認できたらクリアです。",
                                                     7: "お見事です！次はしょうせつの移動です。2本指で、画面を左右にスワイプするとしょうせつを移動します。2回スワイプしてみましょう。",
-                                                    8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。"
                                                 };
                                                 const msg = new SpeechSynthesisUtterance(tutorialSpeeches[tutorialStep]);
                                                 msg.lang = 'ja-JP'; window.speechSynthesis.speak(msg);
@@ -2228,7 +2233,17 @@ const App = () => {
                                             🔙 前のステップ
                                         </button>
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); window.speechSynthesis.cancel(); setTutorialCount(0); if (tutorialStep === 8) { setTutorialStep(9); } else { setTutorialStep(prev => Math.min(8, prev + 1)); } }} 
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                window.speechSynthesis.cancel(); 
+                                                setTutorialCount(0); 
+                                                // 👇 修正: ステップ7の次は9(クリア画面)へ飛ぶようにしました！
+                                                if (tutorialStep >= 7) { 
+                                                    setTutorialStep(9); 
+                                                } else { 
+                                                    setTutorialStep(prev => prev + 1); 
+                                                } 
+                                            }} 
                                             className="flex-1 bg-[rgba(250,204,21,0.2)] text-[#facc15] text-[14px] font-bold border border-[#facc15]/70 rounded-xl py-2 px-3 active:bg-[#facc15] active:text-[#0f172a] transition-all shadow-md cursor-pointer"
                                         >
                                             次のステップ 🔜
@@ -2312,15 +2327,6 @@ const App = () => {
                                                 </div>
                                             </div>
                                         )}
-                                        {tutorialStep === 8 && (
-                                            <div className="bg-slate-800/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-orange-400 text-center w-full shadow-2xl animate-fade-in">
-                                                <h2 className="text-[1.8rem] font-bold text-white mb-1">✌️ ２本指で <span className="text-orange-400">上下(↕️)</span></h2>
-                                                <p className="text-[1.2rem] font-bold text-slate-200 mb-4">画面を切り替える</p>
-                                                <div className="bg-slate-900/80 rounded-xl py-2 border border-slate-700">
-                                                    <span className="text-[1.4rem] font-bold text-yellow-300">クリアまで あと {3 - tutorialCount} 回</span>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -2328,7 +2334,6 @@ const App = () => {
                     </>
                 )}
 
-                {/* 👇 ステップ9 */}
                 {/* 👇 ステップ9（最後のクリア画面） */}
                 {tutorialStep === 9 && (
                     <div className="w-full h-[100dvh] bg-slate-900 text-white animate-fade-in relative flex flex-col items-center justify-center px-6 overflow-hidden">
@@ -2991,7 +2996,6 @@ const App = () => {
                             <span className="text-right text-slate-400 font-bold">長押し</span><span className="font-bold">もう一度(1音)</span>
                             <span className="text-right text-slate-400 font-bold">1本指 左右</span><span className="font-bold">1音 移動</span>
                             <span className="text-right text-slate-400 font-bold">2本指 左右</span><span className="font-bold">小節 移動</span>
-                            <span className="text-right text-slate-400 font-bold">2本指 上下</span><span className="font-bold">モード 切替</span>
                         </div>
                     </div>
                     <div>
