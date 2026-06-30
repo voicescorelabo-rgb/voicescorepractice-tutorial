@@ -584,11 +584,11 @@ const App = () => {
             1: "練習したい操作方法をお選びください。",
             2: "ボイスオーバーをオフにしてください。準備ができたら、画面のどこでもいいので、タップしてください。",
             3: "それではさっそく、実際の練習画面で体験してみましょう！画面をトントンと2回タップして、きらきら星を聞いてみましょう。準備ができたら、もう一度2回タップして止めてください。",
-            4: "次は、自分のペースで１音ずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
+            4: "次は、自分のペースでいちおんずつ進む練習です。画面のどこでもいいので、指を右に向かってサッとスワイプしてください。7回練習しましょう。",
             5: "素晴らしい！次は1つ前のおとに戻ります。画面を左にスワイプしてください。5回スワイプして巻き戻しできればクリアです。",
-            6: "バッチリです！今のおとをもう一度聞きたい時は、指を画面に置いたまま長押ししてください。3回長押ししておとを確認できたらクリアです。",
+            6: "バッチリです！今のおとをもう一度聞きたい時は、指を画面に置いたままながおししてください。3回ながおししておとを確認できたらクリアです。",
             7: "お見事です！次はしょうせつの移動です。2本指で、画面を左右にスワイプするとしょうせつを移動します。2回スワイプしてみましょう。",
-            8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。",
+            //8: "最後に画面の切り替えです。2本指で、画面を上か下に向かってスワイプしてみてください。操作画面、設定画面に移動できます。3回切り替えれば終了です。",
             
             // 👇 ★追加：ステップ9（エンディング）のセリフ！
             9: "おめでとうございます！すべての操作をマスターしました。これで、自由自在に曲を聴きながら練習できますね！わかりづらい操作や困ったことがありましたら、設定パネルの、アンケート、ご報告ボタンからいつでもお知らせください。チュートリアルはここまでです。さあ、練習を始めましょう！"
@@ -598,7 +598,7 @@ const App = () => {
         if (speechText) speak(speechText, tempo);
 
         // 👇 ★修正：ステップ9になったら、アナウンスが絶対に終わるように長めに待つ！
-        if (tutorialStep === 9) {
+        if (tutorialStep === 8) {
             const timer = setTimeout(() => {
                 handleBackToTop();
             }, 35000); // 👈 20000（20秒）から 35000（35秒）に延長！
@@ -962,7 +962,7 @@ const App = () => {
     const resetHintTimer = () => {
         if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
         // チュートリアル中で、かつステップ3〜8の間だけヒントを出す
-        if (!isTutorial || tutorialStep < 3 || tutorialStep > 8) return;
+        if (!isTutorial || tutorialStep < 3 || tutorialStep > 7) return;
 
         hintTimerRef.current = setTimeout(() => {
             // 👇 ★修正：他の音声（最初の説明など）が喋っている最中なら、空気を読んで今回はヒントを喋らずにタイマーをやり直す！
@@ -977,7 +977,7 @@ const App = () => {
                 5: "今度は指を左に向かって、シュッとなぞってみましょう。",
                 6: "指を画面に置いたまま、動かさずにじっとしてみてください。",
                 7: "２本の指を揃えて、横にスライドさせてみてください。",
-                8: "２本の指を揃えて、上下にスライドさせてみてください。"
+                //8: "２本の指を揃えて、上下にスライドさせてみてください。"
             };
             if (hints[tutorialStep]) speak(hints[tutorialStep], tempo);
             resetHintTimer(); // 喋った後、再度タイマー開始
@@ -1009,7 +1009,7 @@ const App = () => {
                 
                 // 👇 ★修正：ここで「1.5秒（1500ミリ秒）」の余韻（待ち時間）を作ってから次へ進む！
                 setTimeout(() => {
-                    if (expectedStep === 8) {
+                    if (expectedStep === 7) {
                         setTutorialStep(9); // 最後にエンディングへ
                     } 
                     else {
@@ -1134,7 +1134,28 @@ const App = () => {
                 }
             } 
             else if (t.maxTouches === 2) {
-                if (isTutorial && tutorialStep !== 7) return;
+                // 👇 --- ここから追加 ---
+                if (e && e.cancelable) e.preventDefault(); // 横揺れ・ブラウザ戻る防止
+                const now = Date.now();
+                if (t.lastTwoFingerSwipe && (now - t.lastTwoFingerSwipe < 600)) return; // 連続クリア防止
+                t.lastTwoFingerSwipe = now;
+                
+                // --- チュートリアル用の制御 ---
+                if (isTutorial && tutorialStep === 7) {
+                    // ここでイベントを完全に殺す
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+
+                    checkTutorialClear(7, 2); 
+                    
+                    
+                    return; // ここで処理終了。絶対に下のコードを通さない！
+                }
+                // 👆 --- ここまで追加 ---
+
+                // （これより下は、元々あった deltaX > 0 などの処理をそのまま残します）
                 if (deltaX > 0) {
                     if (playing) stopPlayback();
                     setMeasure(m => { 
@@ -1154,7 +1175,7 @@ const App = () => {
                     }); 
                     setHighlightId(null); 
                 }
-                checkTutorialClear(7, 2);
+                //checkTutorialClear(7, 2);
             }
         } else if (absDy > 40 && absDy > absDx) {
             if (e.cancelable) e.preventDefault(); 
@@ -2024,7 +2045,14 @@ const App = () => {
         {/* ================================================= */}
         {isTutorial && (
             <div className={`absolute inset-0 z-[100] flex flex-col items-center text-center transition-all ${tutorialStep < 3 ? 'bg-slate-900 justify-center' : 'justify-start pointer-events-none'}`}>
-                
+                {tutorialStep >= 3 && tutorialStep <= 7 && (
+                    <div 
+                        className="absolute bottom-0 left-0 w-full h-[100px] z-[300] pointer-events-auto" 
+                        style={{ backgroundColor: 'transparent' }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    />
+                )}
                 {/* 👇 音声サポートスイッチ */}
                 {tutorialStep < 3 && (
                     <div className="absolute top-4 right-4 z-[200] flex items-center gap-2 pointer-events-auto bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-full border border-slate-600 shadow-lg select-none">
@@ -2422,9 +2450,9 @@ const App = () => {
                             {/* ======================================= */}
                             <div className="relative w-full pt-4 pb-4 flex flex-col items-center z-10">
                                 
-                                {/* 👇 修正: 「やめる」を一番右に寄せるため、ここは幅制限なし(w-full)の独立した行にしました！ */}
-                                <div className="w-full px-4 sm:px-6 flex justify-center items-center h-10 mb-2 relative pointer-events-auto">
-                                    <h3 className="text-yellow-400 font-bold text-[1rem] drop-shadow-md z-10">🎓 練習モード（ステップ {tutorialStep - 2}/5）</h3>
+                                {/* 👇 ★修正：flex-wrapを追加し、ボタンの絶対配置(absolute)を解除しました！ */}
+                                <div className="w-full px-2 sm:px-6 flex flex-wrap justify-center sm:justify-between items-center min-h-[40px] mb-2 gap-2 pointer-events-auto z-20">
+                                    <h3 className="text-yellow-400 font-bold text-[1rem] drop-shadow-md">🎓 練習モード（ステップ {tutorialStep - 2}/5）</h3>
                                     <button 
                                         onClick={(e) => { 
                                             e.stopPropagation(); 
@@ -2432,7 +2460,8 @@ const App = () => {
                                             window.close();
                                             setTimeout(() => { window.location.href = "https://voicescore-practice.streamlit.app/"; }, 500);
                                         }} 
-                                        className="absolute right-4 sm:right-6 text-xs bg-[#1e40af] px-3 py-1.5 rounded-lg text-white font-bold active:scale-95 border border-[#3b82f6] transition-all hover:bg-[#2563eb] z-20 shadow-[0_4px_10px_rgba(37,99,235,0.4)] cursor-pointer flex items-center gap-1"
+                                        // 👇 absoluteとright-4を削除しました
+                                        className="text-xs bg-[#1e40af] px-3 py-1.5 rounded-lg text-white font-bold active:scale-95 border border-[#3b82f6] transition-all hover:bg-[#2563eb] shadow-[0_4px_10px_rgba(37,99,235,0.4)] cursor-pointer flex items-center gap-1"
                                     >
                                         🚀 練習アプリに戻る
                                     </button>
@@ -2490,9 +2519,11 @@ const App = () => {
                             {/* ======================================= */}
                             {/* 🌟 3. 下部エリア：操作エリアと説明文 🌟 */}
                             {/* ======================================= */}
-                            <div className="flex-1 w-full p-2 flex flex-col pointer-events-none relative pb-6 z-10">
-                                <div className="w-full h-full rounded-2xl border-4 border-dashed border-yellow-400/80 bg-yellow-400/5 flex flex-col items-center pt-6 px-4 relative">
-                                    <div className="bg-slate-800/90 backdrop-blur-sm text-yellow-300 px-5 py-2 rounded-full text-[0.95rem] font-bold tracking-widest mb-6 border border-yellow-400/40 shadow-lg">
+                            <div className="absolute top-[200px] bottom-[110px] left-3 right-3 sm:left-6 sm:right-6 pointer-events-none z-10">
+                                <div className="w-full h-full rounded-2xl border-4 border-dashed border-yellow-400/80 bg-yellow-400/5 flex flex-col items-center justify-center relative p-4">
+                                    
+                                    {/* メッセージ */}
+                                    <div className="absolute top-4 sm:top-6 bg-slate-800/90 backdrop-blur-sm text-yellow-300 px-5 py-2 rounded-full text-[0.95rem] font-bold tracking-widest border border-yellow-400/40 shadow-lg">
                                         👐 この枠内のどこを触ってもOK！
                                     </div>
                                     
